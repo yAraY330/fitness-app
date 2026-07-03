@@ -1,0 +1,1221 @@
+// ── Constants ──────────────────────────────────────────────────────────────
+
+const WORKOUT_TYPES = [
+  { id: 'weight',      label: '重量訓練', icon: '🏋️' },
+  { id: 'indoor_run',  label: '室內跑步', icon: '🏃' },
+  { id: 'outdoor_run', label: '室外跑步', icon: '🌳' },
+  { id: 'swim',        label: '游泳',     icon: '🏊' },
+  { id: 'bike',        label: '單車',     icon: '🚴' },
+];
+
+const BODY_PARTS = [
+  { id: 'chest',     label: '胸部' },
+  { id: 'back',      label: '背部' },
+  { id: 'legs',      label: '腿部・臀部' },
+  { id: 'shoulders', label: '肩部' },
+  { id: 'biceps',    label: '二頭肌' },
+  { id: 'triceps',   label: '三頭肌' },
+  { id: 'core',      label: '核心' },
+];
+
+const PRESET_EXERCISES = {
+  chest: ['啞鈴臥推','槓鈴臥推','上斜啞鈴臥推','上斜槓鈴臥推','下斜啞鈴臥推','下斜槓鈴臥推','啞鈴飛鳥','上斜啞鈴飛鳥','下斜啞鈴飛鳥','蝴蝶機夾胸','繩索夾胸','上斜繩索飛鳥','下斜繩索飛鳥','伏地挺身','寬距伏地挺身','鑽石伏地挺身','雙槓撐體（胸）','史密斯機臥推','胸推機'],
+  back:  ['引體向上','反握引體向上','寬握引體向上','中立握引體向上','槓鈴划船','啞鈴划船','T槓划船','俯身划船','坐姿繩索划船','繩索直臂下拉','啞鈴直臂划船','滑輪下拉','反握滑輪下拉','中立握下拉','硬舉','臉拉','背伸展','史密斯機划船','彈力帶划船'],
+  legs:  ['深蹲','前蹲','相撲深蹲','哈克深蹲','箱上深蹲','史密斯機深蹲','保加利亞分腿蹲','弓箭步','行走弓箭步','側弓箭步','腿推機','腿彎舉（臥式）','腿彎舉（坐式）','腿伸展','臀推','臀腿機','繩索臀踢','蚌式開合','羅馬尼亞硬舉','直腿硬舉','小腿提踵（站姿）','小腿提踵（坐姿）'],
+  shoulders: ['啞鈴肩推','槓鈴肩推','Arnold推舉','史密斯機肩推','坐姿肩推機','側平舉','繩索側平舉','機械側平舉','前平舉','繩索前平舉','後三角啞鈴飛鳥','繩索後三角飛鳥','反向蝴蝶機','直立划船','臉拉','啞鈴聳肩','槓鈴聳肩'],
+  biceps:  ['啞鈴彎舉','槓鈴彎舉','EZ槓彎舉','錘式彎舉','斜板錘式彎舉','集中彎舉','斜板彎舉（牧師凳）','托臂彎舉','繩索彎舉','繩索錘式彎舉','反握彎舉','對握引體向上','機械彎舉'],
+  triceps: ['繩索三頭下壓','直桿三頭下壓','反握三頭下壓','法式彎舉（EZ槓）','法式彎舉（啞鈴）','窄握臥推','史密斯機窄握臥推','雙槓撐體（三頭）','板凳撐體','啞鈴三頭伸展（單手）','啞鈴三頭伸展（雙手）','過頭繩索伸展','三頭踢回（Kickback）','機械三頭下壓'],
+  core:    ['仰臥起坐','捲腹','反向捲腹','自行車捲腹','平板支撐','側平板','動態平板','俄羅斯轉體','懸吊舉腿','懸吊屈膝舉腿','仰臥舉腿','剪刀腳','死蟲','健腹輪','山式爬行','V字起身','超人式','臀橋'],
+};
+
+// Free exercise GIF map: Chinese name → folder in free-exercise-db on GitHub
+const GIF_MAP = {
+  // 胸
+  '啞鈴臥推':           'Dumbbell_Bench_Press',
+  '槓鈴臥推':           'Barbell_Bench_Press_-_Medium_Grip',
+  '上斜啞鈴臥推':       'Incline_Dumbbell_Press',
+  '啞鈴飛鳥':           'Dumbbell_Flyes',
+  '上斜啞鈴飛鳥':       'Incline_Dumbbell_Flyes',
+  '伏地挺身':           'Pushups',
+  '鑽石伏地挺身':       'Push-Ups_-_Close_Triceps_Position',
+  '蝴蝶機夾胸':         'Cable_Crossover',
+  // 背
+  '引體向上':           'Pullups',
+  '反握引體向上':       'Chin-Up',
+  '槓鈴划船':           'Bent_Over_Barbell_Row',
+  '啞鈴划船':           'One-Arm_Dumbbell_Row',
+  '滑輪下拉':           'Wide-Grip_Lat_Pulldown',
+  '坐姿繩索划船':       'Seated_Cable_Rows',
+  '硬舉':               'Barbell_Deadlift',
+  '背伸展':             'Hyperextensions_Back_Extensions',
+  '臉拉':               'Face_Pull',
+  '繩索直臂下拉':       'Straight-Arm_Pulldown',
+  // 腿
+  '深蹲':               'Barbell_Full_Squat',
+  '保加利亞分腿蹲':     'Split_Squat_with_Dumbbells',
+  '弓箭步':             'Dumbbell_Lunges',
+  '行走弓箭步':         'Bodyweight_Walking_Lunge',
+  '腿推機':             'Leg_Press',
+  '腿彎舉（臥式）':     'Lying_Leg_Curls',
+  '腿彎舉（坐式）':     'Seated_Leg_Curl',
+  '腿伸展':             'Leg_Extensions',
+  '臀推':               'Barbell_Hip_Thrust',
+  '羅馬尼亞硬舉':       'Romanian_Deadlift',
+  '小腿提踵（站姿）':   'Standing_Calf_Raises',
+  '小腿提踵（坐姿）':   'Seated_Calf_Raise',
+  // 肩
+  '啞鈴肩推':           'Dumbbell_Shoulder_Press',
+  '槓鈴肩推':           'Seated_Barbell_Military_Press',
+  'Arnold推舉':          'Arnold_Dumbbell_Press',
+  '側平舉':             'Side_Lateral_Raise',
+  '前平舉':             'Front_Dumbbell_Raise',
+  '後三角啞鈴飛鳥':     'Seated_Bent-Over_Rear_Delt_Raise',
+  '啞鈴聳肩':           'Dumbbell_Shrug',
+  '槓鈴聳肩':           'Barbell_Shrug',
+  '直立划船':           'Upright_Barbell_Row',
+  // 二頭
+  '啞鈴彎舉':           'Dumbbell_Alternate_Bicep_Curl',
+  '槓鈴彎舉':           'Barbell_Curl',
+  'EZ槓彎舉':           'EZ-Bar_Curl',
+  '錘式彎舉':           'Hammer_Curls',
+  '集中彎舉':           'Concentration_Curls',
+  '斜板彎舉（牧師凳）': 'Preacher_Curl',
+  // 三頭
+  '繩索三頭下壓':        'Triceps_Pushdown',
+  '直桿三頭下壓':        'Triceps_Pushdown',
+  '法式彎舉（EZ槓）':   'EZ-Bar_Skullcrusher',
+  '法式彎舉（啞鈴）':   'Lying_Dumbbell_Tricep_Extension',
+  '窄握臥推':           'Close-Grip_Barbell_Bench_Press',
+  '雙槓撐體（三頭）':   'Dips_-_Triceps_Version',
+  '三頭踢回（Kickback）':'Tricep_Dumbbell_Kickback',
+  // 核心
+  '仰臥起坐':           'Sit-Up',
+  '捲腹':               'Crunches',
+  '反向捲腹':           'Reverse_Crunch',
+  '自行車捲腹':         'Oblique_Crunches',
+  '平板支撐':           'Plank',
+  '側平板':             'Side_Bridge',
+  '俄羅斯轉體':         'Russian_Twist',
+  '懸吊舉腿':           'Hanging_Leg_Raise',
+  '仰臥舉腿':           'Flat_Bench_Lying_Leg_Raise',
+  '健腹輪':             'Ab_Roller',
+  '山式爬行':           'Mountain_Climbers',
+};
+
+const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
+const IMG_EXT  = '/0.jpg';
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function toLocalStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getTodayStr() { return toLocalStr(new Date()); }
+function currentTimeStr() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function formatDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  const days = ['日','一','二','三','四','五','六'];
+  return `${dt.getFullYear()}年${dt.getMonth()+1}月${dt.getDate()}日（週${days[dt.getDay()]}）`;
+}
+function formatDateShort(d) {
+  const dt = new Date(d + 'T00:00:00');
+  const days = ['日','一','二','三','四','五','六'];
+  return `${dt.getMonth()+1}/${dt.getDate()} 週${days[dt.getDay()]}`;
+}
+function daysAgo(dateStr) {
+  const diff = Math.floor((Date.now() - new Date(dateStr+'T00:00:00').getTime()) / 86400000);
+  return diff === 0 ? '今天' : diff === 1 ? '昨天' : `${diff} 天前`;
+}
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+let _savedScrollY = 0;
+function lockScroll() {
+  _savedScrollY = window.scrollY;
+  document.body.style.top = `-${_savedScrollY}px`;
+  document.body.classList.add('scroll-locked');
+}
+function unlockScroll() {
+  document.body.classList.remove('scroll-locked');
+  document.body.style.top = '';
+  window.scrollTo(0, _savedScrollY);
+}
+
+function getTypeInfo(id) { return WORKOUT_TYPES.find(t => t.id === id) || { label: id, icon: '' }; }
+function getPartLabel(id) { return (BODY_PARTS.find(p => p.id === id) || { label: id }).label; }
+
+// Unit helpers — stores always in kg, displays in user preference
+function getUnit() { return localStorage.getItem('weightUnit') || 'kg'; }
+function setUnit(u) { localStorage.setItem('weightUnit', u); }
+function kgToDisplay(kg) {
+  if (kg === '' || kg === null || kg === undefined) return '';
+  const n = parseFloat(kg);
+  if (isNaN(n)) return '';
+  return getUnit() === 'lbs' ? Math.round(n * 2.20462 * 10) / 10 : n;
+}
+function displayToKg(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return 0;
+  return getUnit() === 'lbs' ? Math.round(n / 2.20462 * 1000) / 1000 : n;
+}
+function unitLabel() { return getUnit() === 'lbs' ? '磅' : 'kg'; }
+
+function kgToDisplayUnit(kg, unit) {
+  if (kg === '' || kg === null || kg === undefined) return '';
+  const n = parseFloat(kg); if (isNaN(n)) return '';
+  return unit === 'lbs' ? Math.round(n * 2.20462 * 10) / 10 : n;
+}
+function displayToKgUnit(val, unit) {
+  const n = parseFloat(val); if (isNaN(n)) return 0;
+  return unit === 'lbs' ? Math.round(n / 2.20462 * 1000) / 1000 : n;
+}
+function unitLabelFor(unit) { return unit === 'lbs' ? '磅' : 'kg'; }
+function timeToMins(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+function calcDuration(s, e) {
+  if (!s || !e) return null;
+  let d = timeToMins(e) - timeToMins(s);
+  if (d < 0) d += 1440;
+  return d > 0 && d <= 600 ? d : null;
+}
+
+// GIF / demo
+function getExGif(name) {
+  const folder = GIF_MAP[name];
+  return folder ? IMG_BASE + folder + IMG_EXT : null;
+}
+
+function showDemo(name) {
+  if (document.getElementById('demo-modal')) return;
+  lockScroll();
+  const gifUrl = getExGif(name);
+  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' 健身 教學 示範');
+  const esc = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+
+  const el = document.createElement('div');
+  el.id = 'demo-modal';
+  el.className = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">${esc}</span>
+        <button class="modal-close" onclick="closeDemo()">✕</button>
+      </div>
+      <div class="modal-gif-wrap" id="gif-wrap">
+        ${gifUrl
+          ? `<div class="gif-loading">載入中…</div>
+             <img src="${gifUrl}" alt="${esc}" class="ex-gif"
+               onload="this.previousElementSibling.remove()"
+               onerror="this.parentNode.innerHTML='<div class=gif-fail>示意圖載入失敗</div>'">`
+          : '<div class="gif-fail">此動作暫無示意圖</div>'}
+      </div>
+      <a href="${ytUrl}" target="_blank" class="btn btn-outline" style="margin:12px 0 0">▶ YouTube 教學影片</a>
+    </div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('open'));
+}
+
+function closeDemo() {
+  const el = document.getElementById('demo-modal');
+  if (!el) return;
+  unlockScroll();
+  el.classList.remove('open');
+  setTimeout(() => el.remove(), 250);
+}
+
+// Stats
+function getStreak() {
+  const days = new Set(DB.all().map(w => w.date));
+  const d = new Date();
+  if (!days.has(toLocalStr(d))) d.setDate(d.getDate() - 1);
+  let s = 0;
+  while (days.has(toLocalStr(d))) { s++; d.setDate(d.getDate() - 1); }
+  return s;
+}
+function getWeekStats() {
+  const today = new Date(), dow = today.getDay();
+  const mon = new Date(today);
+  mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  mon.setHours(0,0,0,0);
+  const weekDates = Array.from({length:7}, (_,i) => {
+    const d = new Date(mon); d.setDate(mon.getDate()+i); return toLocalStr(d);
+  });
+  const workoutDays = new Set(DB.all().map(w => w.date));
+  return { weekDates, workoutDays, weekCount: weekDates.filter(d => workoutDays.has(d)).length };
+}
+
+// ── Database ───────────────────────────────────────────────────────────────
+
+const DB = {
+  KEY: 'fitnessApp_v1',
+  _load() { try { return JSON.parse(localStorage.getItem(this.KEY)) || {workouts:[],custom:{}}; } catch { return {workouts:[],custom:{}}; } },
+  _save(d) {
+    try { localStorage.setItem(this.KEY, JSON.stringify(d)); }
+    catch(e) { showToast('儲存失敗：裝置空間不足，請清理瀏覽器資料'); }
+  },
+  addWorkout(w)   { const d=this._load(); d.workouts.push(w); this._save(d); },
+  updateWorkout(id, patch) {
+    const d = this._load();
+    const i = d.workouts.findIndex(w => w.id === id);
+    if (i >= 0) { d.workouts[i] = {...d.workouts[i], ...patch}; this._save(d); }
+  },
+  deleteWorkout(id) { const d=this._load(); d.workouts=d.workouts.filter(w=>w.id!==id); this._save(d); },
+  forDate(date) { return this._load().workouts.filter(w => w.date === date); },
+  all()         { return this._load().workouts.sort((a,b) => b.date.localeCompare(a.date)); },
+  lastForPart(part) {
+    return this._load().workouts
+      .filter(w => w.type==='weight' && w.bodyPart===part)
+      .sort((a,b) => b.date.localeCompare(a.date))[0] || null;
+  },
+  customEx(part) { return this._load().custom[part] || []; },
+  addCustomEx(part, name) {
+    const d=this._load();
+    if (!d.custom[part]) d.custom[part]=[];
+    if (!d.custom[part].includes(name)) { d.custom[part].push(name); this._save(d); }
+  },
+  getPR(name) { return (this._load().prs || {})[name] || null; },
+  checkAndUpdatePRs(exercises, date) {
+    const d = this._load();
+    if (!d.prs) d.prs = {};
+    const hit = [];
+    exercises.forEach(ex => {
+      const cur = d.prs[ex.name] || {};
+      ex.sets.forEach(set => {
+        let changed = false;
+        if (set.weight > 0 && (cur.maxWeight == null || set.weight > cur.maxWeight)) {
+          cur.maxWeight = set.weight; cur.maxWeightDate = date; changed = true;
+        }
+        if (set.reps > 0 && (cur.maxReps == null || set.reps > cur.maxReps)) {
+          cur.maxReps = set.reps; cur.maxRepsDate = date; changed = true;
+        }
+        const vol = (set.weight || 0) * (set.reps || 0);
+        if (vol > 0 && (cur.maxVolume == null || vol > cur.maxVolume)) {
+          cur.maxVolume = vol; cur.maxVolumeDate = date; changed = true;
+        }
+        if (changed) { d.prs[ex.name] = cur; if (!hit.includes(ex.name)) hit.push(ex.name); }
+      });
+    });
+    if (hit.length) this._save(d);
+    return hit;
+  },
+  getExerciseHistory(name) {
+    return this._load().workouts
+      .filter(w => w.type === 'weight' && (w.exercises || []).some(e => e.name === name))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(w => {
+        const ex = w.exercises.find(e => e.name === name);
+        const maxW = Math.max(0, ...ex.sets.map(s => parseFloat(s.weight) || 0));
+        const vol  = ex.sets.reduce((t, s) => t + (parseFloat(s.weight)||0) * (parseInt(s.reps)||0), 0);
+        const maxR = Math.max(0, ...ex.sets.map(s => parseInt(s.reps) || 0));
+        return { date: w.date, maxWeight: maxW, totalVol: vol, maxReps: maxR };
+      });
+  },
+};
+
+// ── Rest Timer (nav-based) ─────────────────────────────────────────────────
+
+const RestTimer = {
+  _interval: null, _remaining: 0,
+  getDefault() { return parseInt(localStorage.getItem('restSecs') || '90'); },
+  setDefault(s) { localStorage.setItem('restSecs', String(s)); },
+  isRunning() { return !!this._interval; },
+  start(secs) {
+    if (this._interval) { clearInterval(this._interval); this._interval = null; }
+    this._remaining = secs ?? this.getDefault();
+    this._updateNav();
+    this._interval = setInterval(() => {
+      this._remaining--;
+      if (this._remaining <= 0) {
+        this._remaining = 0; this._beep(); this._vibrate();
+        this._updateNav(); _updateTimerSheet();
+        setTimeout(() => { clearInterval(this._interval); this._interval = null; this._updateNav(); _updateTimerSheet(); }, 2500);
+      } else { this._updateNav(); _updateTimerSheet(); }
+    }, 1000);
+  },
+  stop() {
+    if (this._interval) { clearInterval(this._interval); this._interval = null; }
+    this._remaining = 0;
+    this._updateNav(); _updateTimerSheet();
+  },
+  add(s) { this._remaining = Math.max(5, this._remaining + s); this._updateNav(); _updateTimerSheet(); },
+  _updateNav() {
+    const btn  = document.getElementById('timer-nav-btn');
+    const icon = document.getElementById('timer-nav-icon');
+    const lbl  = document.getElementById('timer-nav-label');
+    if (!btn) return;
+    const s = this._remaining, m = Math.floor(s/60), sec = s%60;
+    btn.classList.toggle('timer-nav-active', s > 0 || this.isRunning());
+    if (s > 0) {
+      icon.textContent = `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      lbl.textContent = '休息中';
+    } else if (this.isRunning()) {
+      icon.textContent = '✅'; lbl.textContent = '完成！';
+    } else {
+      icon.textContent = '⏱'; lbl.textContent = '計時';
+    }
+  },
+  _beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0,0.25,0.5].forEach(t => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = 880; o.type = 'sine';
+        g.gain.setValueAtTime(0.45, ctx.currentTime+t);
+        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+t+0.18);
+        o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.2);
+      });
+    } catch {}
+  },
+  _vibrate() { try { navigator.vibrate?.([200,100,200]); } catch {} },
+};
+
+// ── Timer Bottom Sheet ─────────────────────────────────────────────────────
+
+function timerNavTap() {
+  if (document.getElementById('timer-sheet')) { closeTimerSheet(); return; }
+  lockScroll();
+  const overlay = Object.assign(document.createElement('div'), {id:'t-overlay', className:'overlay'});
+  overlay.onclick = closeTimerSheet;
+  const sheet = Object.assign(document.createElement('div'), {id:'timer-sheet', className:'bottom-sheet'});
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <span class="sheet-title">⏱ 組間計時</span>
+      <button class="sheet-close" onclick="closeTimerSheet()">✕</button>
+    </div>
+    <div id="timer-body" style="padding:0 20px 28px"></div>`;
+  document.body.appendChild(overlay);
+  document.body.appendChild(sheet);
+  _updateTimerSheet();
+  requestAnimationFrame(() => { overlay.classList.add('open'); sheet.classList.add('open'); });
+}
+
+function closeTimerSheet() {
+  unlockScroll();
+  ['timer-sheet','t-overlay'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.classList.remove('open'); setTimeout(() => el.remove(), 300);
+  });
+}
+
+function _updateTimerSheet() {
+  const el = document.getElementById('timer-body'); if (!el) return;
+  const s = RestTimer._remaining, m = Math.floor(s/60), sec = s%60;
+  const def = RestTimer.getDefault(), running = RestTimer.isRunning();
+  const pct = running && def > 0 ? Math.min(100,(s/def)*100) : (s===0?0:100);
+  el.innerHTML = `
+    <div class="ts-display${s===0&&!running?' ts-done':''}">
+      <div class="ts-time">${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}</div>
+      <div class="ts-bar-bg"><div class="ts-bar-fg" style="width:${pct}%"></div></div>
+    </div>
+    <div class="ts-presets">
+      ${[60,90,120,180].map(t=>`<button class="ts-preset${def===t?' active':''}" onclick="RestTimer.setDefault(${t});RestTimer.start(${t})">${t===60?'1分':t===90?'1分30':t===120?'2分':'3分'}</button>`).join('')}
+    </div>
+    <div class="ts-controls">
+      <button class="ts-adj" onclick="RestTimer.add(-15)">-15s</button>
+      <button class="ts-main" onclick="${running?'RestTimer.stop()':'RestTimer.start()'}">${running?'⏹ 停止':'▶ 開始'}</button>
+      <button class="ts-adj" onclick="RestTimer.add(30)">+30s</button>
+    </div>`;
+}
+
+// ── SVG Line Chart ──────────────────────────────────────────────────────────
+
+function buildSvgLineChart(series, { color = '#6366f1' } = {}) {
+  if (series.length < 2) return '<div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:12px 0">資料不足，至少需要 2 筆記錄</div>';
+  const W = 320, H = 160, pad = { t: 16, r: 16, b: 32, l: 44 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+  const vals = series.map(s => s.value);
+  const minV = Math.min(...vals), maxV = Math.max(...vals), rng = maxV - minV || 1;
+  const pts = series.map((s, i) => ({
+    x: pad.l + (i / (series.length - 1)) * iW,
+    y: pad.t + iH - ((s.value - minV) / rng) * iH,
+    label: s.label, value: s.value,
+  }));
+  const pathD = pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const fillPts = [...pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+    `${pts[pts.length-1].x.toFixed(1)},${(pad.t+iH).toFixed(1)}`,
+    `${pts[0].x.toFixed(1)},${(pad.t+iH).toFixed(1)}`].join(' ');
+  const gid = 'cg' + color.replace('#','');
+  const yLabels = [0,1,2].map(i => {
+    const v = minV + (i/2)*rng, yy = pad.t + iH - (i/2)*iH;
+    return `<text x="${pad.l-6}" y="${yy+4}" class="ct-lbl" text-anchor="end">${Math.round(v)}</text>`;
+  }).join('');
+  const step = Math.ceil(series.length / 5);
+  const xLabels = pts.filter((_,i) => i % step === 0 || i === pts.length-1).map(p =>
+    `<text x="${p.x.toFixed(1)}" y="${pad.t+iH+18}" class="ct-lbl" text-anchor="middle">${p.label}</text>`
+  ).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">
+    <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t+iH}" stroke="var(--border)" stroke-width="1"/>
+    <line x1="${pad.l}" y1="${pad.t+iH}" x2="${pad.l+iW}" y2="${pad.t+iH}" stroke="var(--border)" stroke-width="1"/>
+    ${yLabels}${xLabels}
+    <polygon points="${fillPts}" fill="url(#${gid})"/>
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${color}" stroke="white" stroke-width="2"/>`).join('')}
+  </svg>`;
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+
+const stack = [];
+let currentScreen = 'home', currentParams = {};
+
+const App = {
+  goTo(screen, params) {
+    if (currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
+      if (!confirm('離開後目前紀錄將消失，確定離開？')) return;
+      window.currentExercises = []; window._editId = null;
+    }
+    stack.push({screen: currentScreen, params: currentParams});
+    _render(screen, params || {});
+  },
+  back() {
+    if (currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
+      if (!confirm('離開後目前紀錄將消失，確定離開？')) return;
+      window.currentExercises = []; window._editId = null;
+    }
+    if (!stack.length) return;
+    const prev = stack.pop();
+    _render(prev.screen, prev.params);
+  },
+  goHome() {
+    if (currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
+      if (!confirm('離開後目前紀錄將消失，確定離開？')) return;
+    }
+    stack.length = 0; window.currentExercises = []; window._editId = null;
+    _render('home', {});
+  },
+};
+
+function _render(screen, params) {
+  currentScreen = screen; currentParams = params;
+  document.getElementById('content').scrollTop = 0;
+  window.scrollTo(0, 0);
+  document.getElementById('back-btn').className = stack.length ? '' : 'hidden';
+  document.getElementById('header-right').innerHTML = '';
+  document.querySelectorAll('#bottom-nav .nav-item[data-tab]').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === screen));
+  ({home, history, selectType, selectBodyPart, addExercises, addCardio, dayDetail, exerciseStats})[screen]
+    ?.(params, {title: document.getElementById('header-title'), right: document.getElementById('header-right')});
+}
+
+// ── Home ───────────────────────────────────────────────────────────────────
+
+function home(_, {title}) {
+  title.textContent = '健身紀錄';
+  const today = getTodayStr(), todayWs = DB.forDate(today);
+  const d = new Date(), dayNames=['日','一','二','三','四','五','六'];
+  const {weekDates, workoutDays, weekCount} = getWeekStats();
+  const streak = getStreak();
+  const wkLabels = ['一','二','三','四','五','六','日'];
+
+  const byDate = {};
+  DB.all().filter(w => w.date !== today).forEach(w => { (byDate[w.date]=byDate[w.date]||[]).push(w); });
+  const recentDates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,7);
+
+  document.getElementById('content').innerHTML = `
+    <div class="card" style="padding:14px">
+      <div class="today-header">
+        <div class="today-date-num">${d.getDate()}</div>
+        <div class="today-date-sub">${d.getFullYear()}年${d.getMonth()+1}月　週${dayNames[d.getDay()]}</div>
+      </div>
+      <div class="stats-bar">
+        <div class="stat-item"><div class="stat-num">${streak||'—'}</div><div class="stat-label">🔥 連續天數</div></div>
+        <div class="stat-divider"></div>
+        <div class="stat-item"><div class="stat-num">${weekCount||'—'}</div><div class="stat-label">⚡ 本週天數</div></div>
+      </div>
+      <div class="week-cal">
+        ${weekDates.map((date,i) => {
+          const dt = new Date(date+'T00:00:00'), isToday = date===today, has = workoutDays.has(date);
+          return `<div class="cal-day${isToday?' cal-today':''}${has?' cal-has':''}" onclick="App.goTo('dayDetail',{date:'${date}'})">
+            <div class="cal-label">${wkLabels[i]}</div>
+            <div class="cal-num">${dt.getDate()}</div>
+            <div class="cal-dot">${has?'●':'·'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:12px">
+        ${todayWs.length===0
+          ? `<div class="empty-state" style="padding:16px 0 4px"><div class="empty-icon">🏃</div><p>今天還沒有訓練紀錄</p></div>`
+          : todayWs.map(workoutRow).join('')}
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="App.goTo('selectType',{date:'${today}'})">＋ 新增今日訓練</button>
+    ${recentDates.length ? `
+      <div class="section-title" style="margin-top:4px">最近紀錄</div>
+      ${recentDates.map(date => `
+        <div class="card" style="padding:12px 16px;cursor:pointer" onclick="App.goTo('dayDetail',{date:'${date}'})">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:600;font-size:13px;margin-bottom:3px">${formatDateShort(date)}</div>
+              <div style="font-size:12px;color:var(--text-secondary)">${byDate[date].map(w=>getTypeInfo(w.type).icon+' '+getTypeInfo(w.type).label).join('　')}</div>
+            </div>
+            <span class="row-arrow">›</span>
+          </div>
+        </div>`).join('')}` : ''}`;
+}
+
+function workoutRow(w) {
+  const t = getTypeInfo(w.type);
+  let info = '';
+  if (w.type==='weight') {
+    const vol = w.exercises.reduce((s,ex)=>s+ex.sets.reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),0),0);
+    const timeStr = w.endTime ? `${w.startTime} ～ ${w.endTime}` : (w.startTime || (w.duration != null ? `${w.duration} 分鐘` : ''));
+    info = `${getPartLabel(w.bodyPart)}・${w.exercises.length} 動作${timeStr?`・${timeStr}`:''}`;
+
+  } else if (w.type==='swim') {
+    info = [w.distance&&`${w.distance} ${w.distanceUnit}`,w.laps&&`${w.laps} 趟`,w.duration&&`${w.duration} 分`].filter(Boolean).join('・');
+  } else {
+    info = [w.distance&&`${w.distance} km`,w.duration&&`${w.duration} 分`].filter(Boolean).join('・');
+  }
+  return `<div class="workout-row" onclick="App.goTo('dayDetail',{date:'${w.date}'})">
+    <div class="workout-badge">${t.icon} ${t.label}</div>
+    <div class="workout-info">${info}</div>
+    <span class="row-arrow">›</span>
+  </div>`;
+}
+
+// ── Calendar History ────────────────────────────────────────────────────────
+
+let _calYear = null, _calMonth = null;
+
+const PART_COLORS = {chest:'#ef4444',back:'#3b82f6',legs:'#22c55e',shoulders:'#a855f7',biceps:'#f97316',triceps:'#ec4899',core:'#14b8a6'};
+const TYPE_COLORS = {indoor_run:'#f59e0b',outdoor_run:'#84cc16',swim:'#06b6d4',bike:'#8b5cf6'};
+const PART_LABEL_MAP = {chest:'胸部',back:'背部',legs:'腿部',shoulders:'肩部',biceps:'二頭',triceps:'三頭',core:'核心'};
+const TYPE_LABEL_MAP = {indoor_run:'室內跑步',outdoor_run:'室外跑步',swim:'游泳',bike:'單車'};
+
+function _wColor(w) { return w.type==='weight'?(PART_COLORS[w.bodyPart]||'#6366f1'):(TYPE_COLORS[w.type]||'#6366f1'); }
+
+function history(_, {title}) {
+  title.textContent = '訓練日曆';
+  if (_calYear===null) { const d=new Date(); _calYear=d.getFullYear(); _calMonth=d.getMonth(); }
+  _renderCalendar();
+}
+
+function _calPrev() { if(--_calMonth<0){_calMonth=11;_calYear--;} _renderCalendar(); }
+function _calNext() { if(++_calMonth>11){_calMonth=0;_calYear++;} _renderCalendar(); }
+
+function _renderCalendar() {
+  const y=_calYear, m=_calMonth, all=DB.all(), byDate={};
+  all.forEach(w=>{(byDate[w.date]=byDate[w.date]||[]).push(w);});
+  const today=getTodayStr(), firstDow=new Date(y,m,1).getDay(), lastDate=new Date(y,m+1,0).getDate();
+  const pad = firstDow===0?6:firstDow-1;
+  const monthStr=`${y}-${String(m+1).padStart(2,'0')}`;
+  const cells=[...Array(pad).fill(null),
+    ...Array.from({length:lastDate},(_,i)=>{const ds=`${monthStr}-${String(i+1).padStart(2,'0')}`;return{d:i+1,ds,ws:byDate[ds]||[]};})];
+  while(cells.length%7) cells.push(null);
+  const weeks=[]; for(let i=0;i<cells.length;i+=7) weeks.push(cells.slice(i,i+7));
+  const cellHtml=c=>{
+    if(!c) return '<div class="hcal-cell hcal-empty"></div>';
+    const dots=c.ws.slice(0,4).map(w=>`<span class="hcal-dot" style="background:${_wColor(w)}"></span>`).join('');
+    return `<div class="hcal-cell${c.ds===today?' hcal-today':''}${c.ws.length?' hcal-has':''}" onclick="App.goTo('dayDetail',{date:'${c.ds}'})"><div class="hcal-num">${c.d}</div><div class="hcal-dots">${dots}</div></div>`;
+  };
+  const monthWs=Object.entries(byDate).filter(([d])=>d.startsWith(monthStr)).flatMap(([,ws])=>ws);
+  const counts={}; monthWs.forEach(w=>{const k=w.type==='weight'?w.bodyPart:w.type;counts[k]=(counts[k]||0)+1;});
+  const legend=Object.keys(counts).length
+    ?`<div class="hcal-legend">${Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<div class="hcal-legend-item"><span class="hcal-legend-dot" style="background:${PART_COLORS[k]||TYPE_COLORS[k]||'#6366f1'}"></span><span>${PART_LABEL_MAP[k]||TYPE_LABEL_MAP[k]||k}</span><span class="hcal-legend-count">${n}</span></div>`).join('')}</div>`
+    :'<p class="hcal-empty-msg">本月尚無訓練紀錄</p>';
+  document.getElementById('content').innerHTML=`
+    <div class="hcal-nav">
+      <button class="hcal-nav-btn" onclick="_calPrev()">‹</button>
+      <span class="hcal-nav-title">${y} 年 ${m+1} 月</span>
+      <button class="hcal-nav-btn" onclick="_calNext()">›</button>
+    </div>
+    <div class="hcal-wrap">
+      <div class="hcal-head">${['一','二','三','四','五','六','日'].map(l=>`<div class="hcal-head-cell">${l}</div>`).join('')}</div>
+      ${weeks.map(w=>`<div class="hcal-row">${w.map(cellHtml).join('')}</div>`).join('')}
+    </div>
+    ${legend}`;
+}
+
+// ── Day Detail ─────────────────────────────────────────────────────────────
+
+function dayDetail({date}, {title, right}) {
+  title.textContent = formatDateShort(date);
+  right.innerHTML = `<button class="header-add-btn" onclick="App.goTo('selectType',{date:'${date}'})">＋</button>`;
+  const ws = DB.forDate(date);
+
+  const detailHtml = ws.map(w => {
+    const t = getTypeInfo(w.type);
+    let body = '';
+    if (w.type==='weight') {
+      const vol = w.exercises.reduce((s,ex)=>s+ex.sets.reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),0),0);
+      const timeChip = w.startTime && w.endTime ? `⏱ ${w.startTime} ～ ${w.endTime}` : (w.startTime ? `⏱ ${w.startTime} 開始` : null);
+      const chips = [
+        timeChip,
+        w.duration != null && `${w.duration} 分鐘`,
+        vol > 0 && `訓練量 ${Math.round(vol).toLocaleString()} kg`,
+      ].filter(Boolean).map(c => `<span class="detail-chip">${c}</span>`).join('');
+      body = `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
+          <span class="detail-chip detail-chip-part">${getPartLabel(w.bodyPart)}</span>
+          ${chips}
+        </div>
+        ${w.exercises.map(ex=>`
+          <div class="exercise-block">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <div class="exercise-block-name">${escHtml(ex.name)}</div>
+              <button class="demo-tiny-btn" data-name="${escHtml(ex.name)}" onclick="showDemo(this.dataset.name)">示範</button>
+              <button class="demo-tiny-btn" data-name="${escHtml(ex.name)}" onclick="showExerciseStats(this.dataset.name)">📈 進度</button>
+            </div>
+            <div class="sets-text">${ex.sets.map((s,i)=>`第 ${i+1} 組：${kgToDisplayUnit(s.weight,ex.unit||'kg')} ${unitLabelFor(ex.unit||'kg')} × ${s.reps} 下`).join('<br>')}</div>
+          </div>`).join('')}`;
+    } else if (w.type==='swim') {
+      body = [w.distance&&`距離：<span>${w.distance} ${w.distanceUnit}</span>`,w.laps&&`趟數：<span>${w.laps} 趟</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`]
+        .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
+    } else {
+      body = [w.distance&&`距離：<span>${w.distance} km</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`,w.notes&&`備註：<span>${w.notes}</span>`]
+        .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
+    }
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:16px;font-weight:700">${t.icon} ${t.label}</div>
+        <div style="display:flex;gap:10px">
+          <button class="edit-btn" onclick="editWorkout('${w.id}','${date}')">編輯</button>
+          <button class="delete-btn" onclick="deleteW('${w.id}','${date}')">刪除</button>
+        </div>
+      </div>${body}</div>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML =
+    (ws.length ? detailHtml : `<div class="empty-state"><div class="empty-icon">📝</div><p>這天還沒有訓練紀錄</p></div>`) +
+    `<button class="btn btn-outline" onclick="App.goTo('selectType',{date:'${date}'})">＋ 新增訓練</button>`;
+}
+
+function deleteW(id, date) {
+  if (!confirm('確定刪除這筆紀錄？')) return;
+  DB.deleteWorkout(id); showToast('已刪除');
+  dayDetail({date}, {title:document.getElementById('header-title'), right:document.getElementById('header-right')});
+}
+
+function editWorkout(id, date) {
+  const w = DB.forDate(date).find(ww => ww.id === id);
+  if (!w) return;
+  window._editId = id;
+  if (w.type === 'weight') {
+    window.currentExercises = w.exercises.map(ex => ({
+      name: ex.name, unit: ex.unit || 'kg',
+      sets: ex.sets.map(s => ({ weight: s.weight, reps: s.reps }))
+    }));
+    window._prefilled = false;
+    window._workoutStartTime = null;
+    window._workoutStartStr  = w.startTime || currentTimeStr();
+    window._workoutEndStr    = w.endTime   || '';
+    window._workoutDuration  = w.duration  || null;
+    App.goTo('addExercises', {date, part: w.bodyPart});
+  } else {
+    App.goTo('addCardio', {date, typeId: w.type, existing: w});
+  }
+}
+
+// ── Select Type ────────────────────────────────────────────────────────────
+
+function selectType({date}, {title}) {
+  title.textContent = '選擇訓練類型';
+  window.currentExercises = []; window._editId = null;
+  document.getElementById('content').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">${formatDate(date)}</div>
+    <div class="type-grid">
+      ${WORKOUT_TYPES.map(t=>`
+        <div class="type-card" onclick="pickType('${t.id}','${date}')">
+          <div class="t-icon">${t.icon}</div>
+          <div class="t-label">${t.label}</div>
+        </div>`).join('')}
+    </div>`;
+}
+function pickType(typeId, date) {
+  if (typeId==='weight') App.goTo('selectBodyPart',{date});
+  else App.goTo('addCardio',{date,typeId});
+}
+
+// ── Select Body Part ───────────────────────────────────────────────────────
+
+function selectBodyPart({date}, {title}) {
+  title.textContent = '選擇訓練部位';
+  document.getElementById('content').innerHTML = `
+    <div class="part-grid">
+      ${BODY_PARTS.map(p => {
+        const last = DB.lastForPart(p.id);
+        return `<div class="part-btn" onclick="pickPart('${p.id}','${date}')">
+          <div class="part-label">${p.label}</div>
+          <div class="part-last">${last ? `上次 ${daysAgo(last.date)}` : '尚無紀錄'}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+function pickPart(part, date) {
+  const last = DB.lastForPart(part);
+  window.currentExercises = last
+    ? last.exercises.map(ex => ({name:ex.name, unit:ex.unit||'kg', sets:ex.sets.map(s=>({weight:s.weight,reps:s.reps}))}))
+    : [];
+  window._prefilled = !!last;
+  window._editId = null;
+  window._workoutStartTime = Date.now();
+  window._workoutStartStr  = currentTimeStr();
+  window._workoutEndStr    = '';
+  window._workoutDuration  = null;
+  App.goTo('addExercises',{date,part});
+}
+
+// ── Add Exercises ──────────────────────────────────────────────────────────
+
+function addExercises({date, part}, {title}) {
+  title.textContent = (window._editId ? '編輯' : '') + getPartLabel(part) + ' 訓練';
+  _renderExerciseScreen(date, part);
+}
+
+function _setExUnit(ei, unit, date, part) {
+  _syncInputs();
+  if (window.currentExercises[ei]) window.currentExercises[ei].unit = unit;
+  _renderExerciseScreen(date, part);
+}
+
+function _renderExerciseScreen(date, part) {
+  const exList = window.currentExercises || [];
+  const prefilled = window._prefilled && exList.length > 0;
+  const editMode = !!window._editId;
+
+  const banner = prefilled
+    ? `<div class="prefill-banner">📋 已帶入上次紀錄
+         <button onclick="window.currentExercises=[];window._prefilled=false;_renderExerciseScreen('${date}','${part}')">清空</button>
+       </div>` : '';
+
+  const forms = exList.length === 0
+    ? `<div class="empty-state" style="padding:20px 0"><div class="empty-icon">💪</div><p>點擊「選擇動作」開始記錄</p></div>`
+    : exList.map((ex, ei) => {
+        const exUnit = ex.unit || 'kg';
+        const esc = ex.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        const pr = DB.getPR(ex.name);
+        return `<div class="exercise-item">
+          <div class="exercise-header" data-name="${esc}">
+            <div class="ex-hd-left">
+              <div class="exercise-name">${escHtml(ex.name)}</div>
+              ${pr?.maxWeight > 0 ? `<div class="ex-pr-tag">🏆 PR ${kgToDisplayUnit(pr.maxWeight,exUnit)} ${unitLabelFor(exUnit)} × ${pr.maxReps} 下</div>` : ''}
+              <div class="ex-unit-pills">
+                <button class="ex-unit-pill${exUnit==='kg'?' active':''}" onclick="_setExUnit(${ei},'kg','${date}','${part}')">kg</button>
+                <button class="ex-unit-pill${exUnit==='lbs'?' active':''}" onclick="_setExUnit(${ei},'lbs','${date}','${part}')">lbs</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;padding-top:2px">
+              <button class="demo-inline-btn" onclick="showDemo(this.closest('.exercise-header').dataset.name)">示範</button>
+              <button class="demo-inline-btn" onclick="showExerciseStats(this.closest('.exercise-header').dataset.name)">📈</button>
+              <button class="btn-icon" style="color:var(--danger)" onclick="removeEx(${ei},'${date}','${part}')">🗑️</button>
+            </div>
+          </div>
+          <div class="set-col-headers">
+            <div class="set-col-label">組</div>
+            <div class="set-col-label">重量(${unitLabelFor(exUnit)})</div>
+            <div class="set-col-label">次數(下)</div>
+            <div></div>
+          </div>
+          ${ex.sets.map((s,si)=>`
+            <div class="set-row">
+              <div class="set-num">${si+1}</div>
+              <input class="set-input" type="number" inputmode="decimal" placeholder="0" step="0.5" min="0"
+                value="${kgToDisplayUnit(s.weight,exUnit)}" id="w-${ei}-${si}">
+              <input class="set-input" type="number" inputmode="numeric" placeholder="0" min="0"
+                value="${s.reps}" id="r-${ei}-${si}">
+              <button class="btn-icon" style="color:var(--text-secondary)" onclick="removeSet(${ei},${si},'${date}','${part}')">✕</button>
+            </div>`).join('')}
+          <button class="add-set-btn" onclick="addSet(${ei},'${date}','${part}')">＋ 新增一組</button>
+        </div>`;
+      }).join('');
+
+  const timeBar = `
+    <div class="time-bar">
+      <span class="time-bar-label">訓練時間</span>
+      <div class="time-range">
+        <input type="time" id="workout-start-time" class="time-input" value="${window._workoutStartStr || currentTimeStr()}">
+        <span class="time-sep">～</span>
+        <input type="time" id="workout-end-time" class="time-input" value="${window._workoutEndStr || ''}">
+      </div>
+    </div>`;
+
+  document.getElementById('content').innerHTML = `
+    ${timeBar}
+    ${banner}
+    <div id="ex-forms">${forms}</div>
+    <button class="btn btn-outline" style="margin-bottom:12px" onclick="openPicker('${date}','${part}')">選擇動作</button>
+    ${exList.length>0 ? `<button class="btn btn-primary" onclick="saveWeightWorkout('${date}','${part}')">${editMode?'更新紀錄':'完成紀錄'}</button>` : ''}`;
+}
+
+function _syncInputs() {
+  const st = document.getElementById('workout-start-time');
+  if (st && st.value) window._workoutStartStr = st.value;
+  const et = document.getElementById('workout-end-time');
+  if (et && et.value) window._workoutEndStr = et.value;
+  (window.currentExercises||[]).forEach((ex,ei) => {
+    const exUnit = ex.unit || 'kg';
+    ex.sets.forEach((s,si) => {
+      const w = document.getElementById(`w-${ei}-${si}`);
+      const r = document.getElementById(`r-${ei}-${si}`);
+      if (w) s.weight = w.value !== '' ? displayToKgUnit(w.value, exUnit) : '';
+      if (r) s.reps = r.value;
+    });
+  });
+}
+
+function addExToList(name, date, part) {
+  if ((window.currentExercises||[]).find(e=>e.name===name)) { showToast('此動作已加入'); closePicker(); return; }
+  _syncInputs();
+  window.currentExercises = window.currentExercises || [];
+  window.currentExercises.push({name, unit: getUnit(), sets:[{weight:'',reps:''}]});
+  closePicker();
+  _renderExerciseScreen(date, part);
+}
+
+function removeEx(ei, date, part) { _syncInputs(); window.currentExercises.splice(ei,1); _renderExerciseScreen(date,part); }
+function addSet(ei, date, part)   { _syncInputs(); window.currentExercises[ei].sets.push({weight:'',reps:''}); if (!window._editId) RestTimer.start(); _renderExerciseScreen(date,part); }
+function removeSet(ei, si, date, part) {
+  if (window.currentExercises[ei].sets.length===1) { showToast('至少需要一組'); return; }
+  _syncInputs(); window.currentExercises[ei].sets.splice(si,1); _renderExerciseScreen(date,part);
+}
+
+function saveWeightWorkout(date, part) {
+  _syncInputs();
+  const exercises = (window.currentExercises||[])
+    .map(ex=>({name:ex.name, unit:ex.unit||'kg', sets:ex.sets.filter(s=>s.weight!==''||s.reps!=='').map(s=>({weight:parseFloat(s.weight)||0,reps:parseInt(s.reps)||0}))}))
+    .filter(ex=>ex.sets.length>0);
+  if (!exercises.length) { showToast('請填寫至少一組資料'); return; }
+
+  const startTimeEl = document.getElementById('workout-start-time');
+  const endTimeEl   = document.getElementById('workout-end-time');
+  const startTime = startTimeEl?.value || window._workoutStartStr || '';
+  const endTime   = endTimeEl?.value   || window._workoutEndStr   || '';
+  let duration = calcDuration(startTime, endTime) || window._workoutDuration || null;
+  if (!duration && window._workoutStartTime) {
+    const mins = Math.round((Date.now() - window._workoutStartTime) / 60000);
+    if (mins > 0 && mins <= 600) duration = mins;
+  }
+
+  const payload = {date, timestamp:Date.now(), type:'weight', bodyPart:part, exercises, startTime, ...(endTime?{endTime}:{}), duration};
+  const wasEdit = !!window._editId;
+  if (wasEdit) {
+    DB.updateWorkout(window._editId, payload);
+  } else {
+    const existing = DB.forDate(date).find(w => w.type==='weight' && w.bodyPart===part);
+    if (existing) {
+      DB.updateWorkout(existing.id, {...payload, startTime: existing.startTime || payload.startTime});
+    } else {
+      DB.addWorkout({id:genId(), ...payload});
+    }
+  }
+  const prNames = DB.checkAndUpdatePRs(exercises, date);
+  showToast(prNames.length
+    ? `🏆 新紀錄！${prNames.slice(0,2).join('・')}${prNames.length > 2 ? '…' : ''}`
+    : (wasEdit ? '已更新 ✓' : '訓練已儲存 ✓'));
+  window.currentExercises = []; window._editId = null;
+  setTimeout(()=>{ stack.length=0; App.goTo('dayDetail',{date}); }, 500);
+}
+
+// ── Exercise Picker (Bottom Sheet) ─────────────────────────────────────────
+
+let _pd='', _pp='';
+
+function openPicker(date, part) {
+  if (document.getElementById('p-sheet')) return;
+  lockScroll();
+  _pd=date; _pp=part; _syncInputs();
+
+  const overlay = Object.assign(document.createElement('div'),{id:'p-overlay',className:'overlay'});
+  overlay.onclick = closePicker;
+  document.body.appendChild(overlay);
+
+  const sheet = Object.assign(document.createElement('div'),{id:'p-sheet',className:'bottom-sheet'});
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <span class="sheet-title">選擇動作</span>
+      <button class="sheet-close" onclick="closePicker()">✕</button>
+    </div>
+    <div class="sheet-search-wrap">
+      <input id="picker-search" class="sheet-search-input" type="text" placeholder="🔍 搜尋動作…" autocomplete="off" oninput="_filterPicker(this.value)">
+    </div>
+    <div id="picker-list" class="sheet-list">${_buildPickerList('')}</div>
+    <div class="sheet-custom">
+      <input id="custom-ex-input" class="form-input" type="text" placeholder="自訂動作名稱…">
+      <button class="btn btn-primary btn-sm" onclick="_addCustomEx()">新增</button>
+    </div>`;
+  document.body.appendChild(sheet);
+  requestAnimationFrame(()=>{ overlay.classList.add('open'); sheet.classList.add('open'); });
+}
+
+function closePicker() {
+  unlockScroll();
+  ['p-sheet','p-overlay'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.classList.remove('open'); setTimeout(()=>el.remove(),300);
+  });
+}
+
+function _buildPickerList(q) {
+  const added = new Set((window.currentExercises||[]).map(e=>e.name));
+  const last = DB.lastForPart(_pp);
+  const recentNames = last ? last.exercises.map(e=>e.name) : [];
+  const all = [...new Set([...recentNames,...(PRESET_EXERCISES[_pp]||[]),...DB.customEx(_pp)])];
+  const qLow = q.trim().toLowerCase();
+  const filtered = qLow ? all.filter(n=>n.toLowerCase().includes(qLow)) : all;
+  if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:14px">找不到「${q}」</div>`;
+
+  const recentFiltered = !qLow ? recentNames.filter(n=>filtered.includes(n)) : [];
+  const rest = filtered.filter(n=>!recentNames.includes(n)||qLow);
+
+  const item = name => {
+    const isAdded = added.has(name), isRecent = !qLow && recentNames.includes(name);
+    const esc = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    const gifFolder = GIF_MAP[name];
+    const thumbSrc = gifFolder ? IMG_BASE + gifFolder + IMG_EXT : null;
+
+    const thumbHtml = thumbSrc
+      ? `<img class="ex-thumb" src="${thumbSrc}" loading="lazy" alt=""
+           onerror="this.outerHTML='<span class=ex-thumb-icon>💪</span>'">`
+      : `<span class="ex-thumb-icon">💪</span>`;
+
+    return `<div class="picker-ex-row${isAdded?' picker-ex-added':''}" data-name="${esc}">
+      <div class="ex-thumb-wrap" onclick="showDemo(this.closest('.picker-ex-row').dataset.name)">
+        ${thumbHtml}
+      </div>
+      <div class="picker-ex-info" onclick="_pickerTap(this)">
+        <div class="picker-ex-name">${escHtml(name)}</div>
+        <div class="picker-ex-meta">
+          ${isRecent?'<span class="recent-tag">上次使用</span>':''}
+          ${isAdded?'<span class="added-tag">✓ 已加入</span>':''}
+        </div>
+      </div>
+    </div>`;
+  };
+
+  let html='';
+  if (recentFiltered.length) html+=`<div class="picker-sec-label">上次使用</div>${recentFiltered.map(item).join('')}`;
+  if (rest.length) html+=`<div class="picker-sec-label">${qLow?'搜尋結果':'所有動作'}</div>${rest.map(item).join('')}`;
+  return html;
+}
+
+function _pickerTap(el) {
+  const row = el.closest('.picker-ex-row');
+  if (!row||row.classList.contains('picker-ex-added')) return;
+  addExToList(row.dataset.name, _pd, _pp);
+}
+function _pickerDemo(el) {
+  const row = el.closest('.picker-ex-row');
+  if (row) showDemo(row.dataset.name);
+}
+function _filterPicker(q) { const el=document.getElementById('picker-list'); if(el) el.innerHTML=_buildPickerList(q); }
+function _addCustomEx() {
+  const input=document.getElementById('custom-ex-input');
+  const name=input?.value.trim();
+  if (!name) { showToast('請輸入動作名稱'); return; }
+  DB.addCustomEx(_pp,name); addExToList(name,_pd,_pp);
+}
+
+// ── Add Cardio ─────────────────────────────────────────────────────────────
+
+function addCardio({date, typeId, existing}, {title}) {
+  title.textContent = (window._editId?'編輯：':'')+getTypeInfo(typeId).label;
+  const isSwim = typeId==='swim';
+  document.getElementById('content').innerHTML = `
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">${formatDate(date)}</div>
+    <div class="card">
+      ${isSwim ? `
+        <div class="form-group">
+          <div class="form-label">記錄距離？</div>
+          <div class="option-row" style="margin-bottom:8px">
+            <button class="option-btn selected" id="tog-dist" onclick="togSwim('dist')">是</button>
+            <button class="option-btn" id="tog-nodist" onclick="togSwim('nodist')">否</button>
+          </div>
+          <div id="swim-dist-row" style="display:flex;gap:8px">
+            <input type="number" class="form-input" id="swim-dist" placeholder="距離" inputmode="decimal" step="0.1" style="flex:2">
+            <select class="form-input" id="swim-unit" style="flex:1"><option value="m">公尺</option><option value="km">公里</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">記錄趟數？</div>
+          <div class="option-row" style="margin-bottom:8px">
+            <button class="option-btn selected" id="tog-laps" onclick="togSwim('laps')">是</button>
+            <button class="option-btn" id="tog-nolaps" onclick="togSwim('nolaps')">否</button>
+          </div>
+          <div id="swim-laps-row"><input type="number" class="form-input" id="swim-laps" placeholder="趟數" inputmode="numeric"></div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">時間（分鐘）</div>
+          <input type="number" class="form-input" id="duration" placeholder="例：45" inputmode="numeric">
+        </div>
+      ` : `
+        <div class="form-group">
+          <div class="form-label">距離（公里）</div>
+          <input type="number" class="form-input" id="distance" placeholder="例：5.0" inputmode="decimal" step="0.1">
+        </div>
+        <div class="form-group">
+          <div class="form-label">時間（分鐘）</div>
+          <input type="number" class="form-input" id="duration" placeholder="例：30" inputmode="numeric">
+        </div>
+        ${typeId==='bike'||typeId==='outdoor_run'?`
+        <div class="form-group">
+          <div class="form-label">備註（選填）</div>
+          <input type="text" class="form-input" id="notes" placeholder="例：山路、天氣晴">
+        </div>`:''}
+      `}
+    </div>
+    <button class="btn btn-primary" onclick="saveCardio('${date}','${typeId}')">${window._editId?'更新紀錄':'完成紀錄'}</button>`;
+
+  window._swimShow = {dist:true, laps:true};
+
+  // Pre-fill if editing
+  if (existing) {
+    setTimeout(()=>{
+      if (isSwim) {
+        if (existing.distance != null) { const el=document.getElementById('swim-dist'); if(el) el.value=existing.distance; const su=document.getElementById('swim-unit'); if(su) su.value=existing.distanceUnit||'m'; }
+        if (existing.laps) { const el=document.getElementById('swim-laps'); if(el) el.value=existing.laps; }
+      } else {
+        if (existing.distance) { const el=document.getElementById('distance'); if(el) el.value=existing.distance; }
+        if (existing.notes) { const el=document.getElementById('notes'); if(el) el.value=existing.notes; }
+      }
+      if (existing.duration) { const el=document.getElementById('duration'); if(el) el.value=existing.duration; }
+    }, 0);
+  }
+}
+
+function togSwim(opt) {
+  const s=window._swimShow=window._swimShow||{dist:true,laps:true};
+  const isDist=opt==='dist'||opt==='nodist';
+  if (isDist) {
+    s.dist=opt==='dist';
+    document.getElementById('tog-dist').classList.toggle('selected',s.dist);
+    document.getElementById('tog-nodist').classList.toggle('selected',!s.dist);
+    document.getElementById('swim-dist-row').style.display=s.dist?'flex':'none';
+  } else {
+    s.laps=opt==='laps';
+    document.getElementById('tog-laps').classList.toggle('selected',s.laps);
+    document.getElementById('tog-nolaps').classList.toggle('selected',!s.laps);
+    document.getElementById('swim-laps-row').style.display=s.laps?'block':'none';
+  }
+}
+
+function saveCardio(date, typeId) {
+  const isSwim=typeId==='swim';
+  const w={id:window._editId||genId(), date, timestamp:Date.now(), type:typeId};
+  if (isSwim) {
+    const s=window._swimShow||{dist:true,laps:true};
+    const dv=document.getElementById('swim-dist')?.value;
+    const lv=document.getElementById('swim-laps')?.value;
+    const dur=document.getElementById('duration')?.value;
+    if (!dv&&!lv&&!dur) { showToast('請至少填寫一項資料'); return; }
+    if (s.dist&&dv) { w.distance=parseFloat(dv); w.distanceUnit=document.getElementById('swim-unit').value; }
+    if (s.laps&&lv) w.laps=parseInt(lv);
+    if (dur) w.duration=parseInt(dur);
+  } else {
+    const dv=document.getElementById('distance')?.value;
+    const dur=document.getElementById('duration')?.value;
+    const notes=document.getElementById('notes')?.value;
+    if (!dv&&!dur) { showToast('請至少填寫距離或時間'); return; }
+    if (dv) w.distance=parseFloat(dv);
+    if (dur) w.duration=parseInt(dur);
+    if (notes) w.notes=notes.trim();
+  }
+
+  if (window._editId) { DB.updateWorkout(window._editId, w); showToast('已更新 ✓'); }
+  else { DB.addWorkout(w); showToast('訓練已儲存 ✓'); }
+  window._editId = null;
+  setTimeout(()=>{ stack.length=0; App.goTo('dayDetail',{date}); },500);
+}
+
+// ── Exercise Stats Modal ────────────────────────────────────────────────────
+
+function showExerciseStats(name) {
+  if (document.getElementById('stats-modal')) return;
+  lockScroll();
+  const pr   = DB.getPR(name);
+  const hist = DB.getExerciseHistory(name);
+  const u    = unitLabel();
+
+  const prSection = pr?.maxWeight > 0 ? `
+    <div class="stats-pr-grid">
+      <div class="stats-pr-card">
+        <div class="stats-pr-val">${kgToDisplay(pr.maxWeight)}<span class="stats-pr-unit"> ${u}</span></div>
+        <div class="stats-pr-label">🏆 最大重量</div>
+        ${pr.maxWeightDate ? `<div class="stats-pr-date">${formatDateShort(pr.maxWeightDate)}</div>` : ''}
+      </div>
+      <div class="stats-pr-card">
+        <div class="stats-pr-val">${pr.maxReps}<span class="stats-pr-unit"> 下</span></div>
+        <div class="stats-pr-label">最多次數</div>
+        ${pr.maxRepsDate ? `<div class="stats-pr-date">${formatDateShort(pr.maxRepsDate)}</div>` : ''}
+      </div>
+    </div>` : '<p style="color:var(--text-secondary);font-size:14px;text-align:center;padding:12px 0">尚無個人紀錄</p>';
+
+  const weightSeries = hist.map(h => ({ value: kgToDisplay(h.maxWeight), label: h.date.slice(5) }));
+  const volSeries    = hist.map(h => ({ value: Math.round(kgToDisplay(h.totalVol)), label: h.date.slice(5) }));
+
+  const chartSection = hist.length >= 2 ? `
+    <div style="margin-bottom:16px">
+      <div class="stats-chart-title">📈 最大重量 (${u})</div>
+      ${buildSvgLineChart(weightSeries)}
+    </div>
+    <div style="margin-bottom:16px">
+      <div class="stats-chart-title">📊 單次訓練量 (${u})</div>
+      ${buildSvgLineChart(volSeries, { color: '#10b981' })}
+    </div>` : '';
+
+  const histSection = hist.length ? `
+    <div class="stats-chart-title" style="margin-bottom:6px">歷史紀錄</div>
+    ${[...hist].reverse().slice(0, 10).map(h => `
+      <div class="stats-hist-row">
+        <span class="stats-hist-date">${formatDateShort(h.date)}</span>
+        <span class="stats-hist-val">${kgToDisplay(h.maxWeight)} ${u} × ${h.maxReps} 下</span>
+      </div>`).join('')}` : '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'stats-modal'; overlay.className = 'modal-overlay';
+  overlay.onclick = e => { if (e.target === overlay) closeStats(); };
+  overlay.innerHTML = `
+    <div class="stats-card">
+      <div class="modal-header" style="padding:16px 16px 12px;flex-shrink:0">
+        <span class="modal-title">${escHtml(name)}</span>
+        <button class="modal-close" onclick="closeStats()">✕</button>
+      </div>
+      <div class="stats-body">
+        ${prSection}
+        ${chartSection}
+        ${histSection}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('open'));
+}
+
+function closeStats() {
+  const el = document.getElementById('stats-modal');
+  if (!el) return;
+  unlockScroll();
+  el.classList.remove('open');
+  setTimeout(() => el.remove(), 250);
+}
+
+// ── Exercise Stats Screen ────────────────────────────────────────────────────
+
+function exerciseStats({name}, {title}) {
+  title.textContent = name;
+  showExerciseStats(name);
+  App.back();
+}
+
+// ── PWA ────────────────────────────────────────────────────────────────────
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ── Boot ────────────────────────────────────────────────────────────────────
+
+window.currentExercises = []; window._editId = null; window._prefilled = false; window._workoutEndStr = '';
+_render('home', {});

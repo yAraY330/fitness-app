@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>健身紀錄</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#818cf8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="健身紀錄">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no, email=no, address=no">
+</head>
+<body>
+  <div id="app">
+    <header id="header">
+      <button id="back-btn" onclick="App.back()">&#8592;</button>
+      <h1 id="header-title">健身紀錄</h1>
+      <div id="header-right"></div>
+    </header>
+
+    <main id="content"></main>
+
+    <nav id="bottom-nav">
+      <button class="nav-item" data-tab="home" onclick="App.goHome()">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">首頁</span>
+      </button>
+      <button class="nav-item add-center-btn" onclick="App.goTo('selectType', {date: getTodayStr()})">
+        <span>＋</span>
+      </button>
+      <button class="nav-item" id="timer-nav-btn" onclick="timerNavTap()">
+        <span class="nav-icon" id="timer-nav-icon">⏱</span>
+        <span class="nav-label" id="timer-nav-label">計時</span>
+      </button>
+      <button class="nav-item" data-tab="history" onclick="App.goTo('history', {})">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">歷史</span>
+      </button>
+    </nav>
+  </div>
+
+  <div id="toast"></div>
+  <script src="js/app.js"></script>
+</body>
+</html>
