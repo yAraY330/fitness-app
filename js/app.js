@@ -565,7 +565,11 @@ function home(_, {title}) {
             </div>
             <span class="row-arrow">›</span>
           </div>
-        </div>`).join('')}` : ''}`;
+        </div>`).join('')}` : ''}
+    <div class="data-mgmt">
+      <button class="data-btn" onclick="exportData()">📤 匯出備份</button>
+      <button class="data-btn" onclick="importData()">📥 匯入資料</button>
+    </div>`;
 }
 
 function workoutRow(w) {
@@ -1209,6 +1213,49 @@ function exerciseStats({name}, {title}) {
   title.textContent = name;
   showExerciseStats(name);
   App.back();
+}
+
+// ── Data Export / Import ────────────────────────────────────────────────
+
+function exportData() {
+  const raw = localStorage.getItem(DB.KEY);
+  if (!raw) { showToast('沒有資料可匯出'); return; }
+  const blob = new Blob([raw], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), {
+    href: url, download: `健身紀錄_${getTodayStr()}.json`
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('已匯出 ✓');
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json'; input.style.display = 'none';
+  document.body.appendChild(input);
+  input.onchange = e => {
+    const file = e.target.files[0];
+    document.body.removeChild(input);
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!Array.isArray(parsed.workouts)) { showToast('檔案格式不正確'); return; }
+        const existing = DB.all().length;
+        const msg = existing > 0
+          ? `目前有 ${existing} 筆紀錄會被覆蓋，確定匯入 ${parsed.workouts.length} 筆？`
+          : `確定匯入 ${parsed.workouts.length} 筆紀錄？`;
+        if (!confirm(msg)) return;
+        localStorage.setItem(DB.KEY, ev.target.result);
+        showToast(`已匯入 ${parsed.workouts.length} 筆 ✓`);
+        setTimeout(() => App.goHome(), 300);
+      } catch { showToast('檔案讀取失敗'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 // ── PWA ────────────────────────────────────────────────────────────────────
