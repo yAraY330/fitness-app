@@ -166,18 +166,18 @@ function kgToDisplay(kg) {
 function displayToKg(val) {
   const n = parseFloat(val);
   if (isNaN(n)) return 0;
-  return getUnit() === 'lbs' ? Math.round(n / 2.20462 * 1000) / 1000 : n;
+  return getUnit() === 'lbs' ? Math.round(n / 2.20462 * 100) / 100 : n;
 }
 function unitLabel() { return getUnit() === 'lbs' ? '磅' : 'kg'; }
 
 function kgToDisplayUnit(kg, unit) {
   if (kg === '' || kg === null || kg === undefined) return '';
-  const n = parseFloat(kg); if (isNaN(n)) return '';
+  const n = parseFloat(kg); if (isNaN(n) || !isFinite(n)) return '';
   return unit === 'lbs' ? Math.round(n * 2.20462 * 10) / 10 : n;
 }
 function displayToKgUnit(val, unit) {
   const n = parseFloat(val); if (isNaN(n)) return 0;
-  return unit === 'lbs' ? Math.round(n / 2.20462 * 1000) / 1000 : n;
+  return unit === 'lbs' ? Math.round(n / 2.20462 * 100) / 100 : n;
 }
 function unitLabelFor(unit) { return unit === 'lbs' ? '磅' : 'kg'; }
 function timeToMins(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
@@ -257,7 +257,14 @@ function getWeekStats() {
 
 const DB = {
   KEY: 'fitnessApp_v1',
-  _load() { try { return JSON.parse(localStorage.getItem(this.KEY)) || {workouts:[],custom:{}}; } catch { return {workouts:[],custom:{}}; } },
+  _load() {
+    try {
+      const d = JSON.parse(localStorage.getItem(this.KEY)) || {};
+      if (!Array.isArray(d.workouts)) d.workouts = [];
+      if (!d.custom || typeof d.custom !== 'object') d.custom = {};
+      return d;
+    } catch { return {workouts:[],custom:{}}; }
+  },
   _save(d) {
     try { localStorage.setItem(this.KEY, JSON.stringify(d)); }
     catch(e) { showToast('儲存失敗：裝置空間不足，請清理瀏覽器資料'); }
@@ -312,12 +319,14 @@ const DB = {
       .filter(w => w.type === 'weight' && (w.exercises || []).some(e => e.name === name))
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(w => {
-        const ex = w.exercises.find(e => e.name === name);
-        const maxW = Math.max(0, ...ex.sets.map(s => parseFloat(s.weight) || 0));
-        const vol  = ex.sets.reduce((t, s) => t + (parseFloat(s.weight)||0) * (parseInt(s.reps)||0), 0);
-        const maxR = Math.max(0, ...ex.sets.map(s => parseInt(s.reps) || 0));
+        const ex = (w.exercises||[]).find(e => e.name === name);
+        if (!ex) return null;
+        const sets = ex.sets || [];
+        const maxW = Math.max(0, ...sets.map(s => parseFloat(s.weight) || 0));
+        const vol  = sets.reduce((t, s) => t + (parseFloat(s.weight)||0) * (parseInt(s.reps)||0), 0);
+        const maxR = Math.max(0, ...sets.map(s => parseInt(s.reps) || 0));
         return { date: w.date, maxWeight: maxW, totalVol: vol, maxReps: maxR };
-      });
+      }).filter(Boolean);
   },
 };
 
@@ -431,7 +440,9 @@ function _updateTimerSheet() {
 // ── SVG Line Chart ──────────────────────────────────────────────────────────
 
 function buildSvgLineChart(series, { color = '#6366f1' } = {}) {
-  if (series.length < 2) return '<div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:12px 0">資料不足，至少需要 2 筆記錄</div>';
+  const clean = series.filter(s => isFinite(s.value));
+  if (clean.length < 2) return '<div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:12px 0">資料不足，至少需要 2 筆記錄</div>';
+  series = clean;
   const W = 320, H = 160, pad = { t: 16, r: 16, b: 32, l: 44 };
   const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
   const vals = series.map(s => s.value);
@@ -517,6 +528,12 @@ function _render(screen, params) {
 function home(_, {title}) {
   title.textContent = '健身紀錄';
   const today = getTodayStr(), todayWs = DB.forDate(today);
+  const lastExport = localStorage.getItem('lastExportDate');
+  const backupDays = lastExport
+    ? Math.floor((Date.now() - new Date(lastExport+'T00:00:00').getTime()) / 86400000)
+    : null;
+  const showBackupWarn = backupDays === null || backupDays >= 7;
+  const backupMsg = backupDays === null ? '尚未備份' : `${backupDays} 天未備份`;
   const d = new Date(), dayNames=['日','一','二','三','四','五','六'];
   const {weekDates, workoutDays, weekCount} = getWeekStats();
   const streak = getStreak();
@@ -566,6 +583,7 @@ function home(_, {title}) {
             <span class="row-arrow">›</span>
           </div>
         </div>`).join('')}` : ''}
+    ${showBackupWarn ? `<div class="backup-warn" onclick="exportData()">⚠️ ${backupMsg}，點此立即匯出</div>` : ''}
     <div class="data-mgmt">
       <button class="data-btn" onclick="exportData()">📤 匯出備份</button>
       <button class="data-btn" onclick="importData()">📥 匯入資料</button>
@@ -576,10 +594,9 @@ function workoutRow(w) {
   const t = getTypeInfo(w.type);
   let info = '';
   if (w.type==='weight') {
-    const vol = w.exercises.reduce((s,ex)=>s+ex.sets.reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),0),0);
-    const timeStr = w.endTime ? `${w.startTime} ～ ${w.endTime}` : (w.startTime || (w.duration != null ? `${w.duration} 分鐘` : ''));
-    info = `${getPartLabel(w.bodyPart)}・${w.exercises.length} 動作${timeStr?`・${timeStr}`:''}`;
-
+    const exs = w.exercises || [];
+    const vol = exs.reduce((s,ex)=>s+(ex.sets||[]).reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),0),0);
+    info = `${getPartLabel(w.bodyPart)}・${exs.length} 動作${vol>0?`・${Math.round(vol).toLocaleString()} kg`:''}`;
   } else if (w.type==='swim') {
     info = [w.distance&&`${w.distance} ${w.distanceUnit}`,w.laps&&`${w.laps} 趟`,w.duration&&`${w.duration} 分`].filter(Boolean).join('・');
   } else {
@@ -656,7 +673,8 @@ function dayDetail({date}, {title, right}) {
     const t = getTypeInfo(w.type);
     let body = '';
     if (w.type==='weight') {
-      const vol = w.exercises.reduce((s,ex)=>s+ex.sets.reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),0),0);
+      const exs = w.exercises || [];
+      const vol = exs.reduce((s,ex)=>s+(ex.sets||[]).reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),0),0);
       const timeChip = w.startTime && w.endTime ? `⏱ ${w.startTime} ～ ${w.endTime}` : (w.startTime ? `⏱ ${w.startTime} 開始` : null);
       const chips = [
         timeChip,
@@ -668,14 +686,14 @@ function dayDetail({date}, {title, right}) {
           <span class="detail-chip detail-chip-part">${getPartLabel(w.bodyPart)}</span>
           ${chips}
         </div>
-        ${w.exercises.map(ex=>`
+        ${exs.map(ex=>`
           <div class="exercise-block">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
               <div class="exercise-block-name">${escHtml(ex.name)}</div>
               <button class="demo-tiny-btn" data-name="${escHtml(ex.name)}" onclick="showDemo(this.dataset.name)">示範</button>
               <button class="demo-tiny-btn" data-name="${escHtml(ex.name)}" onclick="showExerciseStats(this.dataset.name)">📈 進度</button>
             </div>
-            <div class="sets-text">${ex.sets.map((s,i)=>`第 ${i+1} 組：${kgToDisplayUnit(s.weight,ex.unit||'kg')} ${unitLabelFor(ex.unit||'kg')} × ${s.reps} 下`).join('<br>')}</div>
+            <div class="sets-text">${(ex.sets||[]).map((s,i)=>`第 ${i+1} 組：${kgToDisplayUnit(s.weight,ex.unit||'kg')} ${unitLabelFor(ex.unit||'kg')} × ${s.reps||0} 下`).join('<br>')}</div>
           </div>`).join('')}`;
     } else if (w.type==='swim') {
       body = [w.distance&&`距離：<span>${w.distance} ${w.distanceUnit}</span>`,w.laps&&`趟數：<span>${w.laps} 趟</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`]
@@ -882,7 +900,15 @@ function addExToList(name, date, part) {
 }
 
 function removeEx(ei, date, part) { _syncInputs(); window.currentExercises.splice(ei,1); _renderExerciseScreen(date,part); }
-function addSet(ei, date, part)   { _syncInputs(); window.currentExercises[ei].sets.push({weight:'',reps:''}); if (!window._editId) RestTimer.start(); _renderExerciseScreen(date,part); }
+function addSet(ei, date, part) {
+  _syncInputs();
+  const sets = window.currentExercises[ei].sets;
+  const last = sets[sets.length - 1];
+  const hasFill = last && (last.weight !== '' || last.reps !== '');
+  sets.push(hasFill ? { weight: last.weight, reps: last.reps } : { weight: '', reps: '' });
+  if (!window._editId) RestTimer.start();
+  _renderExerciseScreen(date, part);
+}
 function removeSet(ei, si, date, part) {
   if (window.currentExercises[ei].sets.length===1) { showToast('至少需要一組'); return; }
   _syncInputs(); window.currentExercises[ei].sets.splice(si,1); _renderExerciseScreen(date,part);
@@ -1022,6 +1048,7 @@ function _addCustomEx() {
   const input=document.getElementById('custom-ex-input');
   const name=input?.value.trim();
   if (!name) { showToast('請輸入動作名稱'); return; }
+  if (name.length > 20) { showToast('動作名稱最多 20 字'); return; }
   DB.addCustomEx(_pp,name); addExToList(name,_pd,_pp);
 }
 
@@ -1227,6 +1254,7 @@ function exportData() {
   });
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  localStorage.setItem('lastExportDate', getTodayStr());
   showToast('已匯出 ✓');
 }
 
@@ -1243,15 +1271,39 @@ function importData() {
       try {
         const parsed = JSON.parse(ev.target.result);
         if (!Array.isArray(parsed.workouts)) { showToast('檔案格式不正確'); return; }
-        const existing = DB.all().length;
-        const msg = existing > 0
-          ? `目前有 ${existing} 筆紀錄會被覆蓋，確定匯入 ${parsed.workouts.length} 筆？`
-          : `確定匯入 ${parsed.workouts.length} 筆紀錄？`;
-        if (!confirm(msg)) return;
-        localStorage.setItem(DB.KEY, ev.target.result);
-        showToast(`已匯入 ${parsed.workouts.length} 筆 ✓`);
+        const cur = DB._load();
+        const existingIds = new Set(cur.workouts.map(w => w.id));
+        const incoming = parsed.workouts.filter(w => w && w.id && !existingIds.has(w.id));
+        const dupCount = parsed.workouts.length - incoming.length;
+        if (!incoming.length) { showToast('沒有新資料（全部重複）'); return; }
+        if (!confirm(`合併 ${incoming.length} 筆新紀錄${dupCount ? `，略過 ${dupCount} 筆重複` : ''}？`)) return;
+
+        const merged = { ...cur, workouts: [...cur.workouts, ...incoming] };
+
+        if (parsed.custom) {
+          Object.keys(parsed.custom).forEach(part => {
+            merged.custom[part] = [...new Set([...(merged.custom[part]||[]), ...(parsed.custom[part]||[])])];
+          });
+        }
+        if (parsed.prs) {
+          merged.prs = merged.prs || {};
+          Object.keys(parsed.prs).forEach(name => {
+            const c = merged.prs[name] || {}, imp = parsed.prs[name] || {};
+            merged.prs[name] = {
+              maxWeight:     (c.maxWeight||0) >= (imp.maxWeight||0) ? c.maxWeight : imp.maxWeight,
+              maxWeightDate: (c.maxWeight||0) >= (imp.maxWeight||0) ? c.maxWeightDate : imp.maxWeightDate,
+              maxReps:       (c.maxReps||0) >= (imp.maxReps||0) ? c.maxReps : imp.maxReps,
+              maxRepsDate:   (c.maxReps||0) >= (imp.maxReps||0) ? c.maxRepsDate : imp.maxRepsDate,
+              maxVolume:     (c.maxVolume||0) >= (imp.maxVolume||0) ? c.maxVolume : imp.maxVolume,
+              maxVolumeDate: (c.maxVolume||0) >= (imp.maxVolume||0) ? c.maxVolumeDate : imp.maxVolumeDate,
+            };
+          });
+        }
+
+        localStorage.setItem(DB.KEY, JSON.stringify(merged));
+        showToast(`已合併 ${incoming.length} 筆 ✓`);
         setTimeout(() => App.goHome(), 300);
-      } catch { showToast('檔案讀取失敗'); }
+      } catch { showToast('檔案讀取失敗，請確認格式正確'); }
     };
     reader.readAsText(file);
   };

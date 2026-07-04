@@ -406,6 +406,17 @@ a, button, [role="button"], input, select, textarea, label {
 .stats-hist-date { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .stats-hist-val { font-size: 13px; font-weight: 700; color: var(--text); }
 
+/* ── Backup warning ── */
+.backup-warn {
+  background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
+  border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600;
+  text-align: center; cursor: pointer; margin-top: 8px; transition: opacity 0.15s;
+}
+.backup-warn:active { opacity: 0.75; }
+@media (prefers-color-scheme: dark) {
+  .backup-warn { background: #451a03; color: #fcd34d; border-color: #78350f; }
+}
+
 /* ── Data management buttons ── */
 .data-mgmt { display: flex; gap: 8px; margin-top: 8px; }
 .data-btn {
