@@ -696,10 +696,12 @@ function dayDetail({date}, {title, right}) {
             <div class="sets-text">${(ex.sets||[]).map((s,i)=>`第 ${i+1} 組：${kgToDisplayUnit(s.weight,ex.unit||'kg')} ${unitLabelFor(ex.unit||'kg')} × ${s.reps||0} 下`).join('<br>')}</div>
           </div>`).join('')}`;
     } else if (w.type==='swim') {
-      body = [w.distance&&`距離：<span>${w.distance} ${w.distanceUnit}</span>`,w.laps&&`趟數：<span>${w.laps} 趟</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`]
+      const tChip = w.startTime && w.endTime ? `${w.startTime} ～ ${w.endTime}` : w.startTime || null;
+      body = [tChip&&`時段：<span>⏱ ${tChip}</span>`,w.distance&&`距離：<span>${w.distance} ${w.distanceUnit}</span>`,w.laps&&`趟數：<span>${w.laps} 趟</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`]
         .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
     } else {
-      body = [w.distance&&`距離：<span>${w.distance} km</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`,w.notes&&`備註：<span>${w.notes}</span>`]
+      const tChip = w.startTime && w.endTime ? `${w.startTime} ～ ${w.endTime}` : w.startTime || null;
+      body = [tChip&&`時段：<span>⏱ ${tChip}</span>`,w.distance&&`距離：<span>${w.distance} km</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`,w.notes&&`備註：<span>${w.notes}</span>`]
         .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
     }
     return `<div class="card">
@@ -1057,8 +1059,18 @@ function _addCustomEx() {
 function addCardio({date, typeId, existing}, {title}) {
   title.textContent = (window._editId?'編輯：':'')+getTypeInfo(typeId).label;
   const isSwim = typeId==='swim';
+  const initStart = existing?.startTime || currentTimeStr();
+  const initEnd   = existing?.endTime   || '';
+
   document.getElementById('content').innerHTML = `
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">${formatDate(date)}</div>
+    <div class="time-bar">
+      <span class="time-bar-label">訓練時間</span>
+      <div class="time-range">
+        <input type="time" id="cardio-start" class="time-input" value="${initStart}">
+        <span class="time-sep">～</span>
+        <input type="time" id="cardio-end" class="time-input" value="${initEnd}">
+      </div>
+    </div>
     <div class="card">
       ${isSwim ? `
         <div class="form-group">
@@ -1081,7 +1093,7 @@ function addCardio({date, typeId, existing}, {title}) {
           <div id="swim-laps-row"><input type="number" class="form-input" id="swim-laps" placeholder="趟數" inputmode="numeric"></div>
         </div>
         <div class="form-group">
-          <div class="form-label">時間（分鐘）</div>
+          <div class="form-label">時間（分鐘，可不填，自動從起訖計算）</div>
           <input type="number" class="form-input" id="duration" placeholder="例：45" inputmode="numeric">
         </div>
       ` : `
@@ -1090,7 +1102,7 @@ function addCardio({date, typeId, existing}, {title}) {
           <input type="number" class="form-input" id="distance" placeholder="例：5.0" inputmode="decimal" step="0.1">
         </div>
         <div class="form-group">
-          <div class="form-label">時間（分鐘）</div>
+          <div class="form-label">時間（分鐘，可不填，自動從起訖計算）</div>
           <input type="number" class="form-input" id="duration" placeholder="例：30" inputmode="numeric">
         </div>
         ${typeId==='bike'||typeId==='outdoor_run'?`
@@ -1104,7 +1116,6 @@ function addCardio({date, typeId, existing}, {title}) {
 
   window._swimShow = {dist:true, laps:true};
 
-  // Pre-fill if editing
   if (existing) {
     setTimeout(()=>{
       if (isSwim) {
@@ -1137,23 +1148,30 @@ function togSwim(opt) {
 
 function saveCardio(date, typeId) {
   const isSwim=typeId==='swim';
+  const startTime = document.getElementById('cardio-start')?.value || '';
+  const endTime   = document.getElementById('cardio-end')?.value   || '';
   const w={id:window._editId||genId(), date, timestamp:Date.now(), type:typeId};
+  if (startTime) w.startTime = startTime;
+  if (endTime)   w.endTime   = endTime;
+
   if (isSwim) {
     const s=window._swimShow||{dist:true,laps:true};
     const dv=document.getElementById('swim-dist')?.value;
     const lv=document.getElementById('swim-laps')?.value;
     const dur=document.getElementById('duration')?.value;
-    if (!dv&&!lv&&!dur) { showToast('請至少填寫一項資料'); return; }
+    if (!dv&&!lv&&!dur&&!startTime) { showToast('請至少填寫一項資料'); return; }
     if (s.dist&&dv) { w.distance=parseFloat(dv); w.distanceUnit=document.getElementById('swim-unit').value; }
     if (s.laps&&lv) w.laps=parseInt(lv);
     if (dur) w.duration=parseInt(dur);
+    else { const calc=calcDuration(startTime,endTime); if(calc) w.duration=calc; }
   } else {
     const dv=document.getElementById('distance')?.value;
     const dur=document.getElementById('duration')?.value;
     const notes=document.getElementById('notes')?.value;
-    if (!dv&&!dur) { showToast('請至少填寫距離或時間'); return; }
+    if (!dv&&!dur&&!startTime) { showToast('請至少填寫距離或時間'); return; }
     if (dv) w.distance=parseFloat(dv);
     if (dur) w.duration=parseInt(dur);
+    else { const calc=calcDuration(startTime,endTime); if(calc) w.duration=calc; }
     if (notes) w.notes=notes.trim();
   }
 
