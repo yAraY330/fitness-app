@@ -519,7 +519,7 @@ function _render(screen, params) {
   document.getElementById('header-right').innerHTML = '';
   document.querySelectorAll('#bottom-nav .nav-item[data-tab]').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === screen));
-  ({home, history, selectType, selectBodyPart, addExercises, addCardio, dayDetail, exerciseStats})[screen]
+  ({home, history, progress, selectType, selectBodyPart, addExercises, addCardio, dayDetail, exerciseStats})[screen]
     ?.(params, {title: document.getElementById('header-title'), right: document.getElementById('header-right')});
 }
 
@@ -660,6 +660,101 @@ function _renderCalendar() {
       ${weeks.map(w=>`<div class="hcal-row">${w.map(cellHtml).join('')}</div>`).join('')}
     </div>
     ${legend}`;
+}
+
+// ── Progress ───────────────────────────────────────────────────────────────
+
+function progress(_, {title}) {
+  title.textContent = '訓練進度';
+
+  // 各部位上次訓練
+  const partStatus = BODY_PARTS.map(p => {
+    const last = DB.lastForPart(p.id);
+    const d = last ? Math.floor((Date.now() - new Date(last.date+'T00:00:00').getTime()) / 86400000) : null;
+    return { ...p, lastDate: last?.date || null, daysAgo: d };
+  });
+
+  // 本週訓練量（各部位）
+  const { weekDates } = getWeekStats();
+  const [wkStart, wkEnd] = [weekDates[0], weekDates[6]];
+  const weekVol = {};
+  DB.all().filter(w => w.type==='weight' && w.date>=wkStart && w.date<=wkEnd).forEach(w => {
+    const vol = (w.exercises||[]).reduce((s,ex)=>(ex.sets||[]).reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),s),0);
+    weekVol[w.bodyPart] = (weekVol[w.bodyPart]||0) + vol;
+  });
+
+  // 最近 PR
+  const prs = DB._load().prs || {};
+  const recentPRs = Object.entries(prs)
+    .filter(([, pr]) => pr.maxWeight > 0 && pr.maxWeightDate)
+    .map(([name, pr]) => ({ name, weight: pr.maxWeight, reps: pr.maxReps, date: pr.maxWeightDate }))
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 8);
+
+  // 跑步距離趨勢
+  const runs = DB.all()
+    .filter(w => (w.type==='outdoor_run'||w.type==='indoor_run') && w.distance > 0)
+    .slice(0, 10).reverse();
+
+  // ── 渲染各部位狀態 ──
+  const partHtml = partStatus.map(p => {
+    const d = p.daysAgo;
+    const dotColor = d===null ? 'var(--border)' : d===0 ? '#10b981' : d<=3 ? 'var(--primary)' : d<=7 ? '#f59e0b' : '#ef4444';
+    const ago = d===null ? '尚未訓練' : d===0 ? '今天' : d===1 ? '昨天' : `${d} 天前`;
+    const dest = p.lastDate
+      ? `App.goTo('dayDetail',{date:'${p.lastDate}'})`
+      : `App.goTo('selectType',{date:'${getTodayStr()}'})`;
+    return `<div class="prog-part-row" onclick="${dest}">
+      <span class="prog-part-dot" style="background:${dotColor}"></span>
+      <span class="prog-part-name">${p.label}</span>
+      <span class="prog-part-ago">${ago}</span>
+      <span class="row-arrow">›</span>
+    </div>`;
+  }).join('');
+
+  // ── 渲染本週訓練量 ──
+  const maxVol = Math.max(1, ...Object.values(weekVol));
+  const volRows = BODY_PARTS.filter(p => weekVol[p.id]).map(p => {
+    const pct = Math.round((weekVol[p.id] / maxVol) * 100);
+    const display = weekVol[p.id] >= 1000
+      ? `${(Math.round(weekVol[p.id]/100)/10).toFixed(1)}k`
+      : Math.round(weekVol[p.id]);
+    return `<div class="prog-vol-row">
+      <div class="prog-vol-label">${p.label}</div>
+      <div class="prog-vol-bar-bg"><div class="prog-vol-bar-fg" style="width:${pct}%;background:${PART_COLORS[p.id]||'var(--primary)'}"></div></div>
+      <div class="prog-vol-num">${display}</div>
+    </div>`;
+  }).join('');
+
+  // ── 渲染最近 PR ──
+  const prRows = recentPRs.length
+    ? recentPRs.map(pr => `
+      <div class="prog-pr-row" data-name="${escHtml(pr.name)}" onclick="showExerciseStats(this.dataset.name)">
+        <div class="prog-pr-name">${escHtml(pr.name)}</div>
+        <div class="prog-pr-right">
+          <span class="prog-pr-val">🏆 ${kgToDisplay(pr.weight)} ${unitLabel()} × ${pr.reps} 下</span>
+          <span class="prog-pr-date">${formatDateShort(pr.date)}</span>
+        </div>
+      </div>`).join('')
+    : '<p class="prog-empty">尚無個人紀錄，完成訓練後自動追蹤</p>';
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="prog-sec-title">各部位上次訓練</div>
+      ${partHtml}
+    </div>
+    ${volRows ? `<div class="card">
+      <div class="prog-sec-title">本週訓練量 (kg)</div>
+      ${volRows}
+    </div>` : ''}
+    <div class="card">
+      <div class="prog-sec-title">最近個人紀錄</div>
+      ${prRows}
+    </div>
+    ${runs.length >= 2 ? `<div class="card">
+      <div class="prog-sec-title">🏃 跑步距離趨勢 (km)</div>
+      ${buildSvgLineChart(runs.map(w=>({value:w.distance,label:w.date.slice(5)})),{color:'#f59e0b'})}
+    </div>` : ''}`;
 }
 
 // ── Day Detail ─────────────────────────────────────────────────────────────
