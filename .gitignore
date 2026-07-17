@@ -1,0 +1,6 @@
+# exercises-dataset：媒體檔約 140MB，版權 © Gym visual，不隨 repo 散布
+# 需自行取得：git clone --depth 1 https://github.com/hasaneyldrm/exercises-dataset
+exercises-dataset/
+
+# Claude Code 專案技能（第三方工具，非應用程式碼）
+.claude/
