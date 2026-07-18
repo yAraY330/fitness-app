@@ -1,20 +1,19 @@
-// ── 筋肉人角色生成器 ────────────────────────────────────────────────────────
+// ── 筋肉人角色生成器（連續輪廓參數化版）───────────────────────────────────
 //
-// 程式生成 SVG，由部位分數驅動體型：
-//   視覺量體 = BMI 基準 × (1 + 係數 × 部位分數/100)
-// 失衡會被誠實畫出來（上壯下細 = 經典雞腿身材）。
-// 風格：粗黑描邊、誇張肌肉塊、漫畫排線陰影、熱血比例（頭小身大）。
+// 畫風基準：dev-style.html 使用者選定的 B 版（肩寬≈頭寬3倍、屈臂握拳姿）。
+// 參數化原理：所有輪廓錨點在「纖細剪影(t=0)」與「極端筋肉人(t=1)」兩套
+// 校準座標間插值，插值比例由該錨點所屬部位的分數決定——
+// 因此低分依然是同一條連續有機輪廓，只是變窄變平；不做零件替換。
+// 全部位 80 分 ≈ 選定的 B 版。內部肌肉分隔線與排線按分數門檻顯示。
 //
 // buildKinniku(opts)：
-//   gender 'm'|'f'、height cm、weight kg、
-//   scores {chest,back,legs,shoulders,biceps,triceps,core}（0-100）、
-//   endurance 0-100、stageIndex 0-5、resting bool、dimParts ['legs',...]
-// 每個部位都包在 g#av-<part>，供 GSAP 做部位發光/膨脹動畫。
+//   gender 'm'|'f'、height、weight、scores{7部位0-100}、endurance 0-100、
+//   stageIndex 0-5、resting、dimParts[]
+// 每部位有 g#av-<part> 群組與 #glow-<part> 覆蓋形，供 GSAP 部位發光/膨脹。
 
 (function () {
 'use strict';
 
-// 六階段（稱號沿用，配件筋肉人化：腕帶→頭帶→冠軍腰帶→披風→皇冠+金氣場）
 const STAGE_STYLE = [
   { title: '健身新手',   trunks: '#64748b', boots: '#475569' },
   { title: '運動愛好者', trunks: '#0284c7', boots: '#075985' },
@@ -24,35 +23,13 @@ const STAGE_STYLE = [
   { title: '傳奇冠軍',   trunks: '#d97706', boots: '#92400e' },
 ];
 
-const OUT = '#1d130c';       // 描邊
-const SKIN = '#f2b380';      // 膚色
-const SKIN_D = '#d68d55';    // 陰影膚色
-const OW = 4;                // 描邊寬
-
+const OUT = '#16100a', SKIN = '#f0b078';
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const lerp = (a, b, t) => a + (b - a) * t;
-const R = n => Math.round(n * 10) / 10;
-
-// 雙描邊四肢：同一路徑先粗描邊、再膚色，得到有輪廓的膠囊肢體
-function limb(d, w, fill) {
-  return `<path d="${d}" fill="none" stroke="${OUT}" stroke-width="${R(w + OW * 2)}" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="${d}" fill="none" stroke="${fill || SKIN}" stroke-width="${R(w)}" stroke-linecap="round" stroke-linejoin="round"/>`;
-}
-function ball(cx, cy, r, fill) {
-  return `<circle cx="${R(cx)}" cy="${R(cy)}" r="${R(r)}" fill="${fill || SKIN}" stroke="${OUT}" stroke-width="${OW}"/>`;
-}
-// 漫畫排線：從 (x,y) 起畫 n 條平行短線
-function hatch(x, y, n, len, dx, dy, gapx, gapy, w, op) {
-  let s = '';
-  for (let i = 0; i < n; i++) {
-    s += `<line x1="${R(x + i * gapx)}" y1="${R(y + i * gapy)}" x2="${R(x + i * gapx + dx * len)}" y2="${R(y + i * gapy + dy * len)}"/>`;
-  }
-  return `<g stroke="${OUT}" stroke-width="${w || 1.8}" opacity="${op || 0.45}" stroke-linecap="round">${s}</g>`;
-}
+const LP = (lo, hi, t) => lo + (hi - lo) * t;
 
 function buildKinniku(opts) {
   const g = opts.gender === 'f' ? 'f' : 'm';
-  const h = clamp(parseFloat(opts.height) || 170, 100, 250);
+  const hgt = clamp(parseFloat(opts.height) || 170, 100, 250);
   const wt = clamp(parseFloat(opts.weight) || 65, 25, 300);
   const sc = opts.scores || {};
   const t = p => clamp(sc[p] || 0, 0, 100) / 100;
@@ -62,242 +39,287 @@ function buildKinniku(opts) {
   const dim = new Set(opts.dimParts || []);
   const resting = !!opts.resting;
 
-  // ── 基準體型：BMI → 量體基準；身高 → 腿長 ──
-  const bmi = wt / Math.pow(h / 100, 2);
-  const bmiT = clamp((bmi - 17) / 13, 0, 1);          // 17(瘦)–30(壯)
-  const base = lerp(0.9, 1.2, bmiT);                   // 全身量體基準
-  const legLen = lerp(0.92, 1.1, clamp((h - 155) / 35, 0, 1));
+  // ── 基準體型：BMI → 全身量體乘數；身高 → 腿長 ──
+  const bmi = wt / Math.pow(hgt / 100, 2);
+  const bmiT = clamp((bmi - 17) / 13, 0, 1);
+  const b = LP(0.92, 1.12, bmiT);              // 寬度乘數（基準之上疊加分數）
+  const legLen = LP(0.94, 1.06, clamp((hgt - 155) / 35, 0, 1));
 
-  // ── 部位 → 幾何參數（視覺 = 基準 × (1 + 係數 × 分數)）──
-  const SW  = 33 * base * (1 + 0.5 * t('shoulders') + 0.16 * t('back')); // 肩半寬
-  const dR  = 10.5 * base * (1 + 0.8 * t('shoulders'));                  // 三角肌球
-  const latW = SW * (0.8 + 0.28 * t('back'));                            // 背闊半寬
-  const pecW = SW * 0.6, pecH = 22 * (1 + 0.55 * t('chest'));            // 胸肌板
-  const coreT = t('core');
-  const waist = 23 * lerp(0.95, 1.32, bmiT) * (1 - 0.16 * coreT - 0.06 * endur); // 腰半寬
-  const belly = bmi >= 26 && coreT < 0.4;                                // 肚腩
-  const armW = 9 * base * (1 + 1.15 * (0.6 * t('biceps') + 0.4 * t('triceps')));
-  const foreW = 7 * base * (1 + 0.85 * (0.35 * t('biceps') + 0.65 * t('triceps')));
-  const biR = armW * 0.62 + 6.5 * t('biceps');                           // 二頭球
-  const thW = 10.5 * base * (1 + 1.15 * t('legs'));                      // 大腿
-  const caW = 7.5 * base * (1 + 0.95 * t('legs'));                       // 小腿
+  const tSh = t('shoulders'), tBk = t('back'), tCh = t('chest'), tCo = t('core');
+  const tLg = t('legs'), tArm = 0.55 * t('biceps') + 0.45 * t('triceps');
 
-  // ── 骨架座標 ──
-  const cx = 130;
-  const headR = 22, hy = 52;
-  const neckY = hy + headR - 4, shY = 98;
-  const waistY = 178, trunkY = waistY - 4, trunkH = 30;
-  const hipY = trunkY + trunkH - 6;
-  const kneeY = hipY + 46 * legLen, ankleY = kneeY + 42 * legLen, footY = ankleY + 12;
-  const hipX = 15;
+  // ── 輪廓關鍵尺寸：低分(lo) ↔ 高分(hi) 依部位分數插值，再乘 BMI 基準 ──
+  const DT  = LP(46, 76, tSh) * b;              // 三角肌最外
+  const BI  = DT + LP(3, 14, tArm);             // 二頭肌最外
+  const AW  = LP(11, 24, tArm);                 // 手臂厚度（內緣用）
+  const AP  = LP(36, 47, tBk * 0.7 + tCh * 0.3) * b;  // 腋下
+  const LAT = LP(37, 53, tBk) * b;              // 背闊最寬
+  const WA  = (26 * LP(0.95, 1.3, bmiT) - 5 * tCo - 2 * endur);  // 腰半寬
+  const TH  = LP(22, 42, tLg) * b;              // 大腿外緣
+  const KO  = LP(15, 26, tLg) * b;              // 膝外緣
+  const CO  = KO + LP(2, 8, tLg);               // 小腿肚外緣
+  const AN  = LP(13, 18, tLg);                  // 踝
+  const HD  = 18.4;                             // 頭半寬（固定，肩越寬頭顯得越小）
+  const belly = bmi >= 26 && tCo < 0.4;
 
-  const dimg = p => dim.has(p) ? ' opacity="0.5" filter="url(#av-dim)"' : '';
+  const cx = 150, W = 300, H = 410;
+  const hy = 54;
 
-  // ── 手臂（微彎的秀肌肉垂放）──
-  const shPx = SW - 4;
-  const elbX = SW + 13, elbY = shY + 46;
-  const fistX = SW + 9, fistY = shY + 88;
-  const arm = s => { // s = 1 右 / -1 左
-    const px = cx + s * shPx, ex = cx + s * elbX, fx = cx + s * fistX;
-    const upper = `M ${R(px)} ${shY + 4} Q ${R(px + s * 12)} ${shY + 20} ${R(ex)} ${elbY}`;
-    const fore  = `M ${R(ex)} ${elbY} Q ${R(ex + s * 3)} ${elbY + 22} ${R(fx)} ${fistY}`;
-    return `<g id="av-arm-${s > 0 ? 'r' : 'l'}">
-      <g id="av-triceps${s > 0 ? '' : '-l'}"${s > 0 ? dimg('triceps') : ''}>${limb(upper, armW * 2)}</g>
-      <g${dimg('triceps')}>${limb(fore, foreW * 2)}</g>
-      <g id="av-biceps${s > 0 ? '' : '-l'}"${s > 0 ? dimg('biceps') : ''}>
-        ${ball(cx + s * (shPx + 7), shY + 24, biR)}
-        ${t('biceps') >= 0.35 ? hatch(cx + s * (shPx + 4) - 3, shY + 27, 3, 6, s * 0.5, 0.87, s * 3.5, -1.5, 1.5, 0.35) : ''}
-      </g>
-      ${ball(cx + s * fistX, fistY + 4, foreW * 0.95)}
-      ${si >= 1 ? `<rect x="${R(cx + s * (fistX + (s > 0 ? -foreW : foreW)) - (s > 0 ? 0 : foreW * 0.9))}" y="${fistY - 14}" width="${R(foreW * 1.9)}" height="9" rx="4" fill="#dc2626" stroke="${OUT}" stroke-width="2.5" transform="rotate(${s * 8} ${R(cx + s * fistX)} ${fistY - 10})"/>` : ''}
-    </g>`;
-  };
+  // ── 上身連續輪廓（左半錨點 → 底邊 → 右半反走鏡射；1px 手繪抖動）──
+  const trapX = LP(30, 36, tSh), trapY = LP(78, 70, tSh);
+  const segs = [
+    ['Q', -trapX - 4, trapY,  -trapX - 10, 86],                    // 斜方肌稜線
+    ['C', -DT * 0.8, 76, -DT - 2, 84,  -DT - 3, 106],              // 三角肌球
+    ['Q', -DT - 2, 118,      -DT + 1, 124],                        // 三角下懸
+    ['C', -BI - 4, 128, -BI - 2, 138,  -BI - 3, 148],              // 二頭肌球
+    ['Q', -BI - 2, 158,      -BI + 2, 164],                        // 肘
+    ['Q', -BI + 4, 176,      -BI + AW * 0.55, 186],                // 前臂（短、內收）
+    ['Q', -BI + AW * 0.75, 192,  -BI + AW, 194],                   // 腕外
+    ['Q', -BI + AW + 6, 192,     -BI + AW + 4, 184],               // 腕內
+    ['Q', -BI + AW + 1, 168,     -BI + AW - 2, 156],               // 內前臂→內肘
+    ['Q', -BI + AW - 6, 140,     -AP - 2, 128],                    // 內二頭
+    ['Q', -AP - 3, 126,      -AP, 124],                            // 腋下
+    ['Q', -LAT - 3, 138,     -LAT, 152],                           // 背闊外擴
+    ['C', -LAT + 8, 176, -WA - 8, 190,  -WA, 206],                 // V 收腰
+    ['Q', -WA - 1, 216,      -WA - 4, 226],                        // 髖
+  ];
+  const j = i => ((i * 7) % 3 - 1) * 0.8;
+  const RD = n => Math.round(n * 10) / 10;
+  let d = `M ${cx - 16} 70 `;
+  segs.forEach(([k, ...a], i) => {
+    if (k === 'Q') d += `Q ${RD(cx + a[0] + j(i))} ${RD(a[1])} ${RD(cx + a[2])} ${RD(a[3] + j(i))} `;
+    else d += `C ${RD(cx + a[0])} ${RD(a[1])} ${RD(cx + a[2] + j(i))} ${RD(a[3])} ${RD(cx + a[4])} ${RD(a[5] + j(i))} `;
+  });
+  d += `L ${RD(cx + WA + 4)} 226 `;
+  for (let i = segs.length - 1; i >= 0; i--) {
+    const [k, ...a] = segs[i];
+    const prev = i > 0 ? segs[i - 1] : null;
+    const [pex, pey] = prev ? [prev[prev.length - 2], prev[prev.length - 1]] : [-16, 70];
+    if (k === 'Q') d += `Q ${RD(cx - a[0] - j(i))} ${RD(a[1])} ${RD(cx - pex)} ${RD(pey - j(i))} `;
+    else d += `C ${RD(cx - a[2])} ${RD(a[3])} ${RD(cx - a[0] - j(i))} ${RD(a[1])} ${RD(cx - pex)} ${RD(pey - j(i))} `;
+  }
+  const torsoArms = d + `Q ${cx} 64 ${cx - 16} 70 Z`;
 
-  // ── 腿 ──
-  const leg = s => {
-    const hx = cx + s * hipX, kx = cx + s * (hipX + 3), ax = cx + s * (hipX + 1);
-    const thigh = `M ${R(hx)} ${R(hipY)} Q ${R(hx + s * 4)} ${R(hipY + 20)} ${R(kx)} ${R(kneeY)}`;
-    const calf  = `M ${R(kx)} ${R(kneeY)} Q ${R(kx + s * 2)} ${R(kneeY + 16)} ${R(ax)} ${R(ankleY)}`;
-    return `<g>
-      ${limb(thigh, thW * 2)}
-      ${limb(calf, caW * 2)}
-      ${t('legs') >= 0.45 ? `<path d="M ${R(hx - s * thW * 0.35)} ${R(hipY + 12)} Q ${R(hx - s * thW * 0.15)} ${R(hipY + 30)} ${R(kx - s * 3)} ${R(kneeY - 6)}" fill="none" stroke="${OUT}" stroke-width="2" opacity="0.4" stroke-linecap="round"/>` : ''}
-      ${t('legs') >= 0.55 ? `<path d="M ${R(kx + s * caW * 0.45)} ${R(kneeY + 8)} Q ${R(kx + s * caW * 0.7)} ${R(kneeY + 18)} ${R(kx + s * caW * 0.3)} ${R(kneeY + 26)}" fill="none" stroke="${OUT}" stroke-width="2" opacity="0.4" stroke-linecap="round"/>` : ''}
-    </g>`;
-  };
-  // 靴子
-  const boot = s => {
-    const ax = cx + s * (hipX + 1);
-    return `<g>
-      <path d="M ${R(ax - 8)} ${R(ankleY - 6)} L ${R(ax - 8)} ${R(footY - 4)} Q ${R(ax + s * 2)} ${R(footY + 3)} ${R(ax + s * 14)} ${R(footY)} L ${R(ax + s * 14)} ${R(footY - 5)} Q ${R(ax + s * 8)} ${R(footY - 8)} ${R(ax + 8)} ${R(ankleY - 6)} Z"
-        fill="${st.boots}" stroke="${OUT}" stroke-width="${OW}" stroke-linejoin="round"/>
-      <line x1="${R(ax - 7)}" y1="${R(ankleY + 1)}" x2="${R(ax + 7)}" y2="${R(ankleY + 1)}" stroke="${OUT}" stroke-width="2" opacity="0.6"/>
-    </g>`;
-  };
+  // ── 腿（連續閉合；長度依身高縮放，以 legT 為原點對 y 縮放）──
+  const legT = 224;
+  const LY = y => RD(legT + (y - legT) * legLen);
+  const KN = 292, ANK = 336, FT = 350;
+  const leg = s => { const o = x => RD(cx + s * x);
+    return `M ${o(WA + 4)} ${legT}
+      C ${o(TH + 2)} ${LY(234)} ${o(TH + 4)} ${LY(246)} ${o(TH)} ${LY(260)}
+      Q ${o(TH - 4)} ${LY(KN - 20)} ${o(KO)} ${LY(KN - 6)}
+      C ${o(CO + 3)} ${LY(KN + 2)} ${o(CO + 4)} ${LY(KN + 12)} ${o(CO)} ${LY(KN + 22)}
+      Q ${o(KO - 3)} ${LY(ANK - 8)} ${o(AN)} ${LY(ANK)}
+      L ${o(AN + 1)} ${LY(FT - 6)} Q ${o(12)} ${LY(FT)} ${o(5)} ${LY(FT - 2)}
+      L ${o(4)} ${LY(ANK)}
+      Q ${o(2)} ${LY(KN + 26)} ${o(5)} ${LY(KN + 2)}
+      Q ${o(7)} ${LY(KN - 16)} ${o(5)} ${LY(258)}
+      Q ${o(4)} ${LY(236)} ${o(1)} ${LY(226)} Z`; };
 
-  // ── 軀幹剪影（斜方肌→三角肌外緣→背闊→腰→髖）──
-  const torso = `M ${R(cx - 12)} ${R(neckY)}
-    Q ${R(cx - SW * 0.55)} ${R(shY - 16)} ${R(cx - shPx)} ${R(shY - 6)}
-    Q ${R(cx - latW - 6)} ${R(shY + 14)} ${R(cx - latW)} ${R(shY + 26)}
-    Q ${R(cx - waist - 4)} ${R(waistY - 18)} ${R(cx - waist)} ${R(waistY)}
-    L ${R(cx - waist - 1)} ${R(trunkY + 10)}
-    L ${R(cx + waist + 1)} ${R(trunkY + 10)}
-    L ${R(cx + waist)} ${R(waistY)}
-    Q ${R(cx + waist + 4)} ${R(waistY - 18)} ${R(cx + latW)} ${R(shY + 26)}
-    Q ${R(cx + latW + 6)} ${R(shY + 14)} ${R(cx + shPx)} ${R(shY - 6)}
-    Q ${R(cx + SW * 0.55)} ${R(shY - 16)} ${R(cx + 12)} ${R(neckY)} Z`;
+  // ── 頭/頸 ──
+  const headP = `M ${cx - HD} ${hy - 4}
+    Q ${cx - HD - 2} ${hy + 13} ${cx - HD * 0.55} ${hy + 21}
+    Q ${cx} ${hy + 27} ${cx + HD * 0.55} ${hy + 21}
+    Q ${cx + HD + 2} ${hy + 13} ${cx + HD} ${hy - 4}
+    Q ${cx + HD * 0.8} ${hy - 19} ${cx} ${hy - 20}
+    Q ${cx - HD * 0.8} ${hy - 19} ${cx - HD} ${hy - 4} Z`;
+  const neckW = LP(13, 19, tSh * 0.6 + tBk * 0.4);
+  const neck = `M ${cx - neckW + 3} ${hy + 12} L ${RD(cx - neckW)} 82 L ${RD(cx + neckW)} 82 L ${cx + neckW - 3} ${hy + 12} Z`;
 
-  // ── 胸肌板 ──
-  const pecTop = shY + 2, pecBot = pecTop + pecH;
-  const pec = s => `<path d="M ${R(cx + s * 2)} ${pecTop}
-      L ${R(cx + s * pecW)} ${pecTop + 3}
-      Q ${R(cx + s * (pecW + 6))} ${R(lerp(pecTop, pecBot, 0.6))} ${R(cx + s * pecW * 0.72)} ${R(pecBot)}
-      Q ${R(cx + s * pecW * 0.3)} ${R(pecBot + 5)} ${R(cx + s * 2)} ${R(pecBot - 2)} Z"
-      fill="${SKIN}" stroke="${OUT}" stroke-width="3.2" stroke-linejoin="round"/>`;
-  const pecShade = s => t('chest') > 0.25
-    ? hatch(cx + s * pecW * 0.45 - 6, pecBot - 7, 4, 8, s * 0.26, -0.97, s * 5, 1, 1.7, 0.42) : '';
-
-  // ── 腹部：腹肌塊 / 平滑 / 肚腩 ──
-  const absTop = pecBot + 6, absBot = trunkY - 2;
-  const absW = waist * 0.62;
-  let absSvg = '';
+  // ── 內部肌肉分隔線（依部位分數門檻顯示）──
+  const tick = (x, y, dx, dy) => `M ${RD(x)} ${RD(y)} l ${dx} ${dy} `;
+  const pecBot = LP(132, 146, tCh);
+  let innerChest = '', hatchChest = '';
+  if (tCh >= 0.12 || bmiT > 0.6) {
+    innerChest += `<path d="M ${cx} 98 L ${cx} ${RD(pecBot - 2)}"/>
+      <path d="M ${cx - 2} ${RD(pecBot - 2)} Q ${cx - 32} ${RD(pecBot + 6)} ${RD(cx - AP - 2)} 124 M ${cx + 2} ${RD(pecBot - 2)} Q ${cx + 32} ${RD(pecBot + 7)} ${RD(cx + AP + 2)} 123"/>`;
+  }
+  if (tCh >= 0.3) {
+    innerChest += `<path d="M ${cx - 34} 84 Q ${cx - 12} 94 ${cx - 3} 93 M ${cx + 34} 83 Q ${cx + 12} 93 ${cx + 3} 93"/>
+      <path d="M ${cx - 38} 92 Q ${RD(cx - AP - 5)} 108 ${RD(cx - AP - 1)} 124 M ${cx + 38} 91 Q ${RD(cx + AP + 5)} 107 ${RD(cx + AP + 1)} 123"/>`;
+    for (let i = 0; i < 5; i++) {
+      hatchChest += tick(cx - 10 - i * 7, pecBot + 1 - i * 3.2, -4, -6) + tick(cx + 10 + i * 7, pecBot - i * 3.2, 4, -6);
+    }
+  }
+  let innerSh = '', hatchSh = '';
+  if (tSh >= 0.3) {
+    innerSh = `<path d="M ${RD(cx - DT + 3)} 120 Q ${RD(cx - BI + 4)} 130 ${RD(cx - BI + 8)} 148 M ${RD(cx + DT - 3)} 119 Q ${RD(cx + BI - 4)} 129 ${RD(cx + BI - 8)} 147"/>`;
+    for (let i = 0; i < 4; i++) {
+      hatchSh += tick(cx - DT + 2 + i * 4, 114 + i * 4, 6, -4) + tick(cx + DT - 2 - i * 4, 113 + i * 4, -6, -4);
+    }
+  }
+  let innerArm = '', hatchArm = '';
+  if (tArm >= 0.35) {
+    innerArm = `<path d="M ${RD(cx - BI + 6)} 164 Q ${RD(cx - BI + 12)} 172 ${RD(cx - BI + 18)} 178 M ${RD(cx + BI - 6)} 163 Q ${RD(cx + BI - 12)} 171 ${RD(cx + BI - 18)} 177"/>`;
+    for (let i = 0; i < 3; i++) {
+      hatchArm += tick(cx - BI + 4 + i * 3, 152 + i * 4, 5, -3) + tick(cx + BI - 4 - i * 3, 151 + i * 4, -5, -3);
+    }
+  }
+  let innerBack = '', hatchBack = '';
+  if (tBk >= 0.4) {
+    for (let i = 0; i < 3; i++) {
+      hatchBack += tick(cx - LAT + 3 + i * 4, 150 + i * 7, 6, -3) + tick(cx + LAT - 3 - i * 4, 149 + i * 7, -6, -3);
+    }
+  }
+  // 頸側排線（肩背夠壯才有）
+  if (tSh + tBk >= 0.8) {
+    hatchBack += tick(cx - 13, 70, 3, 6) + tick(cx - 8, 68, 2, 7) + tick(cx + 13, 70, -3, 6) + tick(cx + 8, 68, -2, 7);
+  }
+  // 腹部
+  let innerCore = '', hatchCore = '';
   if (belly) {
-    absSvg = `<ellipse cx="${cx}" cy="${R((absTop + absBot) / 2 + 4)}" rx="${R(waist * 0.82)}" ry="${R((absBot - absTop) / 2 + 6)}"
-      fill="${SKIN}" stroke="${OUT}" stroke-width="3.2"/>
-      <path d="M ${R(cx - waist * 0.5)} ${R(absBot - 2)} Q ${cx} ${R(absBot + 6)} ${R(cx + waist * 0.5)} ${R(absBot - 2)}" fill="none" stroke="${OUT}" stroke-width="2" opacity="0.5"/>`;
-  } else if (coreT > 0.2 || endur >= 0.5) {
-    const rows = 3, rh = (absBot - absTop) / rows;
-    let blocks = '';
-    for (let r = 0; r < rows; r++) {
-      for (const s of [-1, 1]) {
-        blocks += `<rect x="${R(cx + (s > 0 ? 2 : -absW - 2))}" y="${R(absTop + r * rh + 1)}"
-          width="${R(absW)}" height="${R(rh - 2.5)}" rx="${R(rh * 0.32)}"
-          fill="${SKIN}" stroke="${OUT}" stroke-width="${lerp(1.6, 2.8, coreT)}" opacity="${lerp(0.5, 1, Math.max(coreT, endur * 0.8))}"/>`;
+    innerCore = `<path d="M ${RD(cx - WA * 0.75)} 208 Q ${cx} 216 ${RD(cx + WA * 0.75)} 208" fill="none"/>
+      <ellipse cx="${cx}" cy="182" rx="${RD(WA * 0.85)}" ry="26" fill="none" opacity="0.35"/>`;
+  } else if (tCo >= 0.25 || endur >= 0.5) {
+    const aw = clamp(WA * 0.72, 13, 19);
+    innerCore = `<path d="M ${cx} 148 L ${cx} 212"/>
+      <path d="M ${RD(cx - aw)} 158 Q ${cx} 163 ${RD(cx + aw)} 158 M ${RD(cx - aw - 1)} 175 Q ${cx} 180 ${RD(cx + aw + 1)} 175 M ${RD(cx - aw + 1)} 192 Q ${cx} 197 ${RD(cx + aw - 1)} 192"/>`;
+    if (tCo >= 0.3) innerCore += `<path d="M ${RD(cx - aw - 3)} 152 Q ${RD(cx - aw - 7)} 180 ${RD(cx - aw - 1)} 208 M ${RD(cx + aw + 3)} 151 Q ${RD(cx + aw + 7)} 179 ${RD(cx + aw + 1)} 207"/>`;
+    if (tCo >= 0.45) {
+      innerCore += `<path d="M ${RD(cx - LAT + 2)} 160 Q ${cx - 32} 182 ${RD(cx - WA - 3)} 204 M ${RD(cx + LAT - 2)} 159 Q ${cx + 32} 181 ${RD(cx + WA + 3)} 203"/>`;
+      for (let i = 0; i < 3; i++) {
+        hatchCore += tick(cx - WA - 2 - i * 2, 200 - i * 13, 5, -4) + tick(cx + WA + 2 + i * 2, 199 - i * 13, -5, -4);
       }
     }
-    absSvg = blocks;
   } else {
-    absSvg = `<line x1="${cx}" y1="${absTop}" x2="${cx}" y2="${absBot}" stroke="${OUT}" stroke-width="2" opacity="0.35"/>`;
+    innerCore = `<path d="M ${cx} 150 L ${cx} 210" opacity="0.4"/>`;
+  }
+  // 腿
+  let innerLeg = '', hatchLeg = '';
+  if (tLg >= 0.4) {
+    innerLeg = `<path d="M ${RD(cx - TH + 4)} ${LY(250)} Q ${cx - 20} ${LY(272)} ${cx - 19} ${LY(KN - 14)} M ${RD(cx + TH - 4)} ${LY(249)} Q ${cx + 20} ${LY(271)} ${cx + 19} ${LY(KN - 15)}"/>`;
+    for (let i = 0; i < 3; i++) {
+      hatchLeg += tick(cx - TH + 8 + i * 4, LY(KN - 20 + i * 4), 5, -4) + tick(cx + TH - 8 - i * 4, LY(KN - 21 + i * 4), -5, -4);
+    }
+  }
+  if (tLg >= 0.5) {
+    innerLeg += `<path d="M ${RD(cx - CO - 1)} ${LY(KN + 6)} Q ${cx - 17} ${LY(KN + 18)} ${cx - 14} ${LY(KN + 28)} M ${RD(cx + CO + 1)} ${LY(KN + 5)} Q ${cx + 17} ${LY(KN + 17)} ${cx + 14} ${LY(KN + 27)}"/>`;
+    for (let i = 0; i < 3; i++) {
+      hatchLeg += tick(cx - CO + 4 + i * 3, LY(KN + 24 + i * 3), 4, -5) + tick(cx + CO - 4 - i * 3, LY(KN + 23 + i * 3), -4, -5);
+    }
   }
 
-  // ── 短褲 + 腰帶 ──
-  const trunkW = waist + 5;
-  const trunks = `<path d="M ${R(cx - trunkW)} ${trunkY}
-      L ${R(cx + trunkW)} ${trunkY}
-      L ${R(cx + trunkW + 2)} ${trunkY + trunkH - 8}
-      L ${R(cx + hipX + thW * 0.7)} ${R(trunkY + trunkH)}
-      L ${R(cx + 6)} ${R(trunkY + trunkH - 4)}
-      Q ${cx} ${R(trunkY + trunkH + 4)} ${R(cx - 6)} ${R(trunkY + trunkH - 4)}
-      L ${R(cx - hipX - thW * 0.7)} ${R(trunkY + trunkH)}
-      L ${R(cx - trunkW - 2)} ${trunkY + trunkH - 8} Z"
-      fill="${st.trunks}" stroke="${OUT}" stroke-width="${OW}" stroke-linejoin="round"/>`;
-  const belt = si >= 3 ? `<g id="av-belt">
-      <rect x="${R(cx - trunkW - 2)}" y="${trunkY - 2}" width="${R(trunkW * 2 + 4)}" height="10" rx="4" fill="#fbbf24" stroke="${OUT}" stroke-width="3"/>
-      <circle cx="${cx}" cy="${trunkY + 3}" r="7.5" fill="#fde68a" stroke="${OUT}" stroke-width="2.5"/>
-      <circle cx="${cx}" cy="${trunkY + 3}" r="3" fill="#d97706" stroke="none"/>
+  // ── 拳頭 + 腕帶(s1) ──
+  const fistX = Math.max(BI - 13, WA + 16), fistY = 189;
+  const fistR = LP(10, 13.5, tArm);
+  const fists = [-1, 1].map(s2 => { const fx = RD(cx + s2 * fistX);
+    return `<circle cx="${fx}" cy="${fistY}" r="${RD(fistR)}" fill="${SKIN}" stroke="${OUT}" stroke-width="4.4"/>
+      <path d="M ${RD(fx - s2 * fistR * 0.45)} ${fistY - 7} Q ${RD(fx - s2 * fistR * 0.8)} ${fistY} ${RD(fx - s2 * fistR * 0.45)} ${fistY + 7}"
+        fill="none" stroke="${OUT}" stroke-width="1.6" opacity="0.7"/>
+      ${si >= 1 ? `<rect x="${RD(fx - fistR + 1)}" y="${fistY - fistR - 9}" width="${RD(fistR * 2 - 2)}" height="8" rx="3.5" fill="#dc2626" stroke="${OUT}" stroke-width="2.4"/>` : ''}`;
+  }).join('');
+
+  // ── 短褲 + 腰帶(s3) ──
+  const trunks = `<path d="M ${RD(cx - WA - 6)} 216 L ${RD(cx + WA + 6)} 215
+      Q ${RD(cx + WA + 12)} 232 ${RD(cx + TH - 2)} ${LY(250)}
+      L ${cx + 9} ${LY(248)} Q ${cx} ${LY(260)} ${cx - 9} ${LY(248)}
+      L ${RD(cx - TH + 2)} ${LY(250)} Q ${RD(cx - WA - 12)} 232 ${RD(cx - WA - 6)} 216 Z"
+      fill="${st.trunks}" stroke="${OUT}" stroke-width="4.4" stroke-linejoin="round"/>`;
+  const belt = si >= 3 ? `<g>
+      <rect x="${RD(cx - WA - 8)}" y="212" width="${RD(WA * 2 + 16)}" height="10" rx="4" fill="#fbbf24" stroke="${OUT}" stroke-width="2.8"/>
+      <circle cx="${cx}" cy="217" r="7" fill="#fde68a" stroke="${OUT}" stroke-width="2.4"/>
+      <circle cx="${cx}" cy="217" r="2.8" fill="#d97706"/>
     </g>` : '';
 
-  // ── 頭 ──
-  const jaw = `<path d="M ${R(cx - headR + 3)} ${R(hy + 6)}
-      Q ${R(cx - headR)} ${R(hy + headR)} ${cx} ${R(hy + headR + 4)}
-      Q ${R(cx + headR)} ${R(hy + headR)} ${R(cx + headR - 3)} ${R(hy + 6)}
-      Q ${R(cx + headR + 1)} ${R(hy - headR * 0.7)} ${cx} ${R(hy - headR)}
-      Q ${R(cx - headR - 1)} ${R(hy - headR * 0.7)} ${R(cx - headR + 3)} ${R(hy + 6)} Z"
-      fill="${SKIN}" stroke="${OUT}" stroke-width="${OW}"/>`;
+  // ── 靴子 ──
+  const boots = [-1, 1].map(s => { const o = x => RD(cx + s * x);
+    return `<path d="M ${o(4)} ${LY(ANK - 5)} L ${o(3)} ${LY(FT - 4)} Q ${o(13)} ${LY(FT + 4)} ${o(29)} ${LY(FT - 1)} L ${o(21)} ${LY(ANK - 5)} Q ${o(12)} ${LY(ANK - 9)} ${o(4)} ${LY(ANK - 5)} Z"
+      fill="${st.boots}" stroke="${OUT}" stroke-width="3.4" stroke-linejoin="round"/>`; }).join('');
 
-  const hairM = `<path d="M ${R(cx - headR + 1)} ${R(hy - 2)}
-      L ${R(cx - headR - 3)} ${R(hy - headR * 0.9)}
-      L ${R(cx - headR * 0.55)} ${R(hy - headR * 0.75)}
-      L ${R(cx - headR * 0.3)} ${R(hy - headR - 6)}
-      L ${R(cx + headR * 0.05)} ${R(hy - headR * 0.8)}
-      L ${R(cx + headR * 0.4)} ${R(hy - headR - 4)}
-      L ${R(cx + headR * 0.6)} ${R(hy - headR * 0.7)}
-      L ${R(cx + headR + 3)} ${R(hy - headR * 0.85)}
-      L ${R(cx + headR - 1)} ${R(hy - 2)}
-      Q ${cx} ${R(hy - headR * 1.02)} ${R(cx - headR + 1)} ${R(hy - 2)} Z"
-      fill="#2f2019" stroke="${OUT}" stroke-width="3" stroke-linejoin="round"/>`;
-  const hairF = `
-      <path d="M ${R(cx - headR - 2)} ${R(hy)} Q ${R(cx - headR - 9)} ${R(hy + 34)} ${R(cx - headR + 5)} ${R(hy + 44)} L ${R(cx - headR + 7)} ${R(hy + 4)} Z" fill="#4a2c17" stroke="${OUT}" stroke-width="3"/>
-      <path d="M ${R(cx + headR + 2)} ${R(hy)} Q ${R(cx + headR + 9)} ${R(hy + 34)} ${R(cx + headR - 5)} ${R(hy + 44)} L ${R(cx + headR - 7)} ${R(hy + 4)} Z" fill="#4a2c17" stroke="${OUT}" stroke-width="3"/>
-      <path d="M ${R(cx - headR + 1)} ${R(hy - 2)}
-        Q ${R(cx - headR * 0.5)} ${R(hy - headR - 7)} ${R(cx + headR * 0.15)} ${R(hy - headR * 0.95)}
-        Q ${R(cx + headR * 0.7)} ${R(hy - headR - 3)} ${R(cx + headR - 1)} ${R(hy - 2)}
-        Q ${cx} ${R(hy - headR * 1.05)} ${R(cx - headR + 1)} ${R(hy - 2)} Z"
-        fill="#4a2c17" stroke="${OUT}" stroke-width="3"/>
-      <path d="M ${R(cx + headR * 0.55)} ${R(hy - headR)} Q ${R(cx + headR + 14)} ${R(hy + 6)} ${R(cx + headR + 6)} ${R(hy + 40)} Q ${R(cx + headR + 1)} ${R(hy + 20)} ${R(cx + headR * 0.8)} ${R(hy - headR * 0.4)} Z"
-        fill="#4a2c17" stroke="${OUT}" stroke-width="3"/>`;
-
-  // 臉：粗眉 + 小眼 + 表情（休養時閉眼）
-  const brow = s => `<path d="M ${R(cx + s * 15)} ${R(hy - 3)} Q ${R(cx + s * 8)} ${R(hy - 7)} ${R(cx + s * 3.5)} ${R(hy - 4)}"
-      fill="none" stroke="${OUT}" stroke-width="3.4" stroke-linecap="round"/>`;
+  // ── 臉 + 髮 ──
+  const brows = resting
+    ? `<path d="M ${cx - 13} ${hy - 1} L ${cx - 4} ${hy} M ${cx + 13} ${hy - 2} L ${cx + 4} ${hy}" stroke="${OUT}" stroke-width="3" stroke-linecap="round" fill="none"/>`
+    : `<path d="M ${cx - 14} ${hy - 3} L ${cx - 4} ${hy + 1} M ${cx + 14} ${hy - 4} L ${cx + 4} ${hy + 1}" stroke="${OUT}" stroke-width="3.4" stroke-linecap="round" fill="none"/>`;
   const eyes = resting
-    ? `<path d="M ${R(cx - 12)} ${R(hy + 4)} q 4 3 8 0 M ${R(cx + 4)} ${R(hy + 4)} q 4 3 8 0" fill="none" stroke="${OUT}" stroke-width="2.4" stroke-linecap="round"/>`
-    : `<circle cx="${R(cx - 8.5)}" cy="${R(hy + 3.5)}" r="3" fill="${OUT}"/>
-       <circle cx="${R(cx + 8.5)}" cy="${R(hy + 3.5)}" r="3" fill="${OUT}"/>
-       <circle cx="${R(cx - 7.6)}" cy="${R(hy + 2.6)}" r="1" fill="#fff"/>
-       <circle cx="${R(cx + 9.4)}" cy="${R(hy + 2.6)}" r="1" fill="#fff"/>`;
+    ? `<path d="M ${cx - 11} ${hy + 6} q 3.5 3 7 0 M ${cx + 4} ${hy + 6} q 3.5 3 7 0" fill="none" stroke="${OUT}" stroke-width="2.2" stroke-linecap="round"/>`
+    : `<circle cx="${cx - 8}" cy="${hy + 6}" r="2.5" fill="${OUT}"/><circle cx="${cx + 8}" cy="${hy + 6}" r="2.5" fill="${OUT}"/>`;
   const lash = g === 'f' && !resting
-    ? `<path d="M ${R(cx - 12.5)} ${R(hy + 1)} l -3 -2 M ${R(cx + 12.5)} ${R(hy + 1)} l 3 -2" stroke="${OUT}" stroke-width="1.8" stroke-linecap="round"/>` : '';
+    ? `<path d="M ${cx - 11.5} ${hy + 3.5} l -3 -2 M ${cx + 11.5} ${hy + 3.5} l 3 -2" stroke="${OUT}" stroke-width="1.7" stroke-linecap="round"/>` : '';
   const mouth = resting
-    ? `<path d="M ${R(cx - 4)} ${R(hy + 13)} q 4 2 8 0" fill="none" stroke="${OUT}" stroke-width="2.2" stroke-linecap="round"/>`
-    : `<path d="M ${R(cx - 6)} ${R(hy + 12)} q 6 5 12 0" fill="none" stroke="${OUT}" stroke-width="2.6" stroke-linecap="round"/>`;
-  const cheeks = `<circle cx="${R(cx - 15)}" cy="${R(hy + 9)}" r="3.5" fill="#ef8d66" opacity="0.4"/>
-      <circle cx="${R(cx + 15)}" cy="${R(hy + 9)}" r="3.5" fill="#ef8d66" opacity="0.4"/>`;
+    ? `<path d="M ${cx - 4} ${hy + 15} q 4 2.5 8 0" fill="none" stroke="${OUT}" stroke-width="2.2" stroke-linecap="round"/>`
+    : `<path d="M ${cx - 7} ${hy + 14} Q ${cx} ${hy + 19} ${cx + 8} ${hy + 13} L ${cx + 5} ${hy + 16.5} Q ${cx} ${hy + 19.5} ${cx - 4} ${hy + 16.5} Z" fill="#fff" stroke="${OUT}" stroke-width="1.8" stroke-linejoin="round"/>`;
 
-  // 配件：頭帶(s2)、皇冠(s5)
-  const headband = si >= 2 ? `<rect x="${R(cx - headR + 1)}" y="${R(hy - headR * 0.62)}" width="${R(headR * 2 - 2)}" height="7.5" rx="3.5" fill="#dc2626" stroke="${OUT}" stroke-width="2.5"/>` : '';
-  const crown = si >= 5 ? `<path d="M ${R(cx - 15)} ${R(hy - headR - 3)} L ${R(cx - 11)} ${R(hy - headR - 16)} L ${R(cx - 5)} ${R(hy - headR - 5)} L ${cx} ${R(hy - headR - 19)} L ${R(cx + 5)} ${R(hy - headR - 5)} L ${R(cx + 11)} ${R(hy - headR - 16)} L ${R(cx + 15)} ${R(hy - headR - 3)} Z"
-      fill="#fbbf24" stroke="${OUT}" stroke-width="3" stroke-linejoin="round"/>` : '';
+  const hairM = `<path d="M ${RD(cx - HD * 0.95)} ${hy - 5}
+      L ${RD(cx - HD * 0.9)} ${hy - 23} L ${RD(cx - HD * 0.5)} ${hy - 15}
+      L ${RD(cx - HD * 0.32)} ${hy - 29} L ${RD(cx - HD * 0.05)} ${hy - 17}
+      L ${RD(cx + HD * 0.22)} ${hy - 28} L ${RD(cx + HD * 0.45)} ${hy - 16}
+      L ${RD(cx + HD * 0.85)} ${hy - 24} L ${RD(cx + HD * 0.95)} ${hy - 5}
+      Q ${cx} ${hy - 13} ${RD(cx - HD * 0.95)} ${hy - 5} Z"
+      fill="#241812" stroke="${OUT}" stroke-width="3" stroke-linejoin="round"/>`;
+  const hairFBack = `<path d="M ${RD(cx - HD - 3)} ${hy - 2} Q ${RD(cx - HD - 10)} ${hy + 36} ${RD(cx - HD + 3)} ${hy + 50} L ${RD(cx - HD + 6)} ${hy + 4} Z" fill="#3d2413" stroke="${OUT}" stroke-width="3"/>
+      <path d="M ${RD(cx + HD + 3)} ${hy - 2} Q ${RD(cx + HD + 10)} ${hy + 36} ${RD(cx + HD - 3)} ${hy + 50} L ${RD(cx + HD - 6)} ${hy + 4} Z" fill="#3d2413" stroke="${OUT}" stroke-width="3"/>`;
+  const hairF = `<path d="M ${RD(cx - HD * 0.95)} ${hy - 4}
+      Q ${RD(cx - HD * 0.5)} ${hy - 28} ${RD(cx + HD * 0.15)} ${hy - 25}
+      Q ${RD(cx + HD * 0.75)} ${hy - 27} ${RD(cx + HD * 0.95)} ${hy - 4}
+      Q ${cx} ${hy - 14} ${RD(cx - HD * 0.95)} ${hy - 4} Z"
+      fill="#3d2413" stroke="${OUT}" stroke-width="3"/>
+      <path d="M ${RD(cx + HD * 0.5)} ${hy - 24} Q ${RD(cx + HD + 15)} ${hy + 2} ${RD(cx + HD + 7)} ${hy + 42} Q ${RD(cx + HD + 2)} ${hy + 20} ${RD(cx + HD * 0.75)} ${hy - 10} Z"
+      fill="#3d2413" stroke="${OUT}" stroke-width="3"/>`;
 
-  // 披風(s4)、金氣場(s5)、耐力氣場(≥80)
-  const cape = si >= 4 ? `<path d="M ${R(cx - shPx - 4)} ${R(shY - 4)}
-      Q ${R(cx - SW - 26)} ${R(waistY + 30)} ${R(cx - SW - 10)} ${R(kneeY + 12)}
-      L ${R(cx + SW + 10)} ${R(kneeY + 12)}
-      Q ${R(cx + SW + 26)} ${R(waistY + 30)} ${R(cx + shPx + 4)} ${R(shY - 4)} Z"
-      fill="#b91c1c" stroke="${OUT}" stroke-width="${OW}" stroke-linejoin="round"/>` : '';
-  const aura = si >= 5 ? `<circle cx="${cx}" cy="${R((shY + kneeY) / 2)}" r="${R(SW + 62)}" fill="#fbbf24" opacity="0.14"/>` : '';
-  const wind = endur >= 0.8 ? `<g stroke="#f59e0b" stroke-width="3" opacity="0.55" stroke-linecap="round">
-      <path d="M ${R(cx - SW - 28)} ${R(footY - 6)} h 18 M ${R(cx - SW - 20)} ${R(footY + 2)} h 24 M ${R(cx + SW + 10)} ${R(footY - 6)} h 18 M ${R(cx + SW - 4)} ${R(footY + 2)} h 24" fill="none"/>
+  const headband = si >= 2 ? `<rect x="${RD(cx - HD + 1)}" y="${hy - 13}" width="${RD(HD * 2 - 2)}" height="7" rx="3.5" fill="#dc2626" stroke="${OUT}" stroke-width="2.2"/>` : '';
+  const crown = si >= 5 ? `<path d="M ${cx - 13} ${hy - 22} L ${cx - 10} ${hy - 34} L ${cx - 4} ${hy - 24} L ${cx} ${hy - 37} L ${cx + 4} ${hy - 24} L ${cx + 10} ${hy - 34} L ${cx + 13} ${hy - 22} Z"
+      fill="#fbbf24" stroke="${OUT}" stroke-width="2.8" stroke-linejoin="round"/>` : '';
+
+  const cape = si >= 4 ? `<path d="M ${RD(cx - DT + 6)} 92
+      Q ${RD(cx - DT - 22)} 200 ${RD(cx - DT - 6)} ${LY(300)}
+      L ${RD(cx + DT + 6)} ${LY(300)}
+      Q ${RD(cx + DT + 22)} 200 ${RD(cx + DT - 6)} 92 Z"
+      fill="#b91c1c" stroke="${OUT}" stroke-width="4" stroke-linejoin="round"/>` : '';
+  const aura = si >= 5 ? `<circle cx="${cx}" cy="190" r="${RD(DT + 78)}" fill="#fbbf24" opacity="0.13"/>` : '';
+  const wind = endur >= 0.8 ? `<g stroke="#f59e0b" stroke-width="3" opacity="0.55" stroke-linecap="round" fill="none">
+      <path d="M ${RD(cx - DT - 34)} ${LY(FT - 8)} h 18 M ${RD(cx - DT - 24)} ${LY(FT + 2)} h 24 M ${RD(cx + DT + 16)} ${LY(FT - 8)} h 18 M ${RD(cx + DT)} ${LY(FT + 2)} h 24"/>
     </g>` : '';
 
-  // 休養：頭上繃帶 + Zzz
   const restOverlay = resting ? `<g>
-      <rect x="${R(cx + headR * 0.1)}" y="${R(hy - headR - 2)}" width="${R(headR * 1.1)}" height="9" rx="4" fill="#f8fafc" stroke="${OUT}" stroke-width="2" transform="rotate(-14 ${R(cx + headR * 0.6)} ${R(hy - headR + 2)})"/>
-      <line x1="${R(cx + headR * 0.35)}" y1="${R(hy - headR + 1)}" x2="${R(cx + headR * 0.9)}" y2="${R(hy - headR - 3)}" stroke="#cbd5e1" stroke-width="1.6"/>
-      <text x="${R(cx + headR + 14)}" y="${R(hy - headR - 6)}" font-size="15" font-weight="900" fill="${OUT}" transform="rotate(12 ${R(cx + headR + 14)} ${R(hy - headR - 6)})">Z</text>
-      <text x="${R(cx + headR + 26)}" y="${R(hy - headR - 16)}" font-size="11" font-weight="900" fill="${OUT}" opacity="0.7" transform="rotate(12 ${R(cx + headR + 26)} ${R(hy - headR - 16)})">z</text>
+      <rect x="${RD(cx + 2)}" y="${hy - 26}" width="${RD(HD * 1.1)}" height="8" rx="4" fill="#f8fafc" stroke="${OUT}" stroke-width="2" transform="rotate(-14 ${RD(cx + 10)} ${hy - 22})"/>
+      <text x="${RD(cx + HD + 12)}" y="${hy - 26}" font-size="15" font-weight="900" fill="${OUT}" transform="rotate(12 ${RD(cx + HD + 12)} ${hy - 26})">Z</text>
+      <text x="${RD(cx + HD + 25)}" y="${hy - 36}" font-size="11" font-weight="900" fill="${OUT}" opacity="0.7" transform="rotate(12 ${RD(cx + HD + 25)} ${hy - 36})">z</text>
     </g>` : '';
 
-  // ── 組裝 ──
-  return `<svg viewBox="0 0 260 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">
-    <defs>
-      <filter id="av-dim"><feColorMatrix type="saturate" values="0.45"/></filter>
-    </defs>
+  // ── 部位覆蓋形：GSAP 發光用（glow-*）；衰退變暗共用同形 ──
+  const region = {
+    chest:     `<rect x="${RD(cx - AP)}" y="96" width="${RD(AP * 2)}" height="${RD(pecBot - 94)}" rx="14"/>`,
+    shoulders: `<circle cx="${RD(cx - DT + 8)}" cy="104" r="17"/><circle cx="${RD(cx + DT - 8)}" cy="103" r="17"/>`,
+    back:      `<path d="M ${RD(cx - LAT)} 130 L ${RD(cx - WA - 2)} 200 L ${RD(cx - WA + 10)} 200 L ${RD(cx - LAT + 16)} 130 Z"/><path d="M ${RD(cx + LAT)} 129 L ${RD(cx + WA + 2)} 199 L ${RD(cx + WA - 10)} 199 L ${RD(cx + LAT - 16)} 129 Z"/>`,
+    biceps:    `<circle cx="${RD(cx - BI + 9)}" cy="142" r="14"/><circle cx="${RD(cx + BI - 9)}" cy="141" r="14"/>`,
+    triceps:   `<circle cx="${RD(cx - BI + 11)}" cy="172" r="12"/><circle cx="${RD(cx + BI - 11)}" cy="171" r="12"/>`,
+    core:      `<rect x="${RD(cx - WA * 0.8)}" y="150" width="${RD(WA * 1.6)}" height="60" rx="10"/>`,
+    legs:      `<rect x="${RD(cx - TH - 2)}" y="${LY(238)}" width="${RD(TH + 4)}" height="${RD(80 * legLen)}" rx="14"/><rect x="${RD(cx - 2)}" y="${LY(237)}" width="${RD(TH + 4)}" height="${RD(80 * legLen)}" rx="14"/>`,
+  };
+  let overlays = '';
+  Object.keys(region).forEach(p => {
+    overlays += `<g id="glow-${p}" fill="#fff" opacity="0" style="mix-blend-mode:overlay">${region[p]}</g>`;
+    if (dim.has(p)) overlays += `<g fill="#1b2430" opacity="0.35">${region[p]}</g>`;
+  });
+
+  const iw = `fill="none" stroke="${OUT}" stroke-width="1.8" opacity="0.8" stroke-linecap="round"`;
+  const hw = `stroke="${OUT}" stroke-width="1.4" opacity="0.5" fill="none" stroke-linecap="round"`;
+
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">
     ${aura}
     ${cape}
-    ${g === 'f' ? `<g>${hairF.split('</path>').slice(0, 2).join('</path>')}</path></g>` : ''}
-    ${arm(-1)}${arm(1)}
-    <g id="av-legs"${dimg('legs')}>${leg(-1)}${leg(1)}${boot(-1)}${boot(1)}</g>
-    <g id="av-back"${dimg('back')}>
-      <path d="${torso}" fill="${SKIN}" stroke="${OUT}" stroke-width="${OW}" stroke-linejoin="round"/>
-      ${t('back') >= 0.35 ? hatch(cx - latW + 4, shY + 24, 3, 8, 0.42, 0.91, 3.5, 2.5, 1.6, 0.32) : ''}
-      ${t('back') >= 0.35 ? hatch(cx + latW - 4 - 3.5, shY + 24, 3, 8, -0.42, 0.91, -3.5, 2.5, 1.6, 0.32) : ''}
-    </g>
-    <g id="av-shoulders"${dimg('shoulders')}>
-      ${ball(cx - shPx, shY + 2, dR)}${ball(cx + shPx, shY + 2, dR)}
-      ${t('shoulders') >= 0.35 ? hatch(cx - shPx - dR * 0.35, shY + dR * 0.25, 3, 5.5, 0.7, 0.7, 3.5, -1.8, 1.5, 0.35) : ''}
-      ${t('shoulders') >= 0.35 ? hatch(cx + shPx + dR * 0.35 - 3.8, shY + dR * 0.25 - 3.5, 3, 5.5, -0.7, 0.7, -3.5, -1.8, 1.5, 0.35) : ''}
-    </g>
-    <g id="av-chest"${dimg('chest')}>${pec(-1)}${pec(1)}${pecShade(-1)}${pecShade(1)}</g>
-    <g id="av-core"${dimg('core')}>${absSvg}</g>
+    ${g === 'f' ? hairFBack : ''}
+    <path d="${leg(-1)}" fill="${SKIN}" stroke="${OUT}" stroke-width="4.6" stroke-linejoin="round"/>
+    <path d="${leg(1)}" fill="${SKIN}" stroke="${OUT}" stroke-width="4.6" stroke-linejoin="round"/>
+    <g id="av-legs"><g ${iw}>${innerLeg}</g><path d="${hatchLeg}" ${hw}/></g>
+    <path d="${neck}" fill="${SKIN}" stroke="${OUT}" stroke-width="4"/>
+    <path d="${torsoArms}" fill="${SKIN}" stroke="${OUT}" stroke-width="5" stroke-linejoin="round"/>
+    <g id="av-back"><path d="${hatchBack}" ${hw}/></g>
+    <g id="av-shoulders"><g ${iw}>${innerSh}</g><path d="${hatchSh}" ${hw}/></g>
+    <g id="av-chest"><g ${iw}>${innerChest}</g><path d="${hatchChest}" ${hw}/></g>
+    <g id="av-core"><g ${iw}>${innerCore}</g><path d="${hatchCore}" ${hw}/></g>
+    <g id="av-arms"><g ${iw}>${innerArm}</g><path d="${hatchArm}" ${hw}/></g>
     ${trunks}${belt}
-    <g id="av-head">
-      ${jaw}
-      <path d="M ${R(cx - headR + 4)} ${R(hy + 10)} Q ${cx} ${R(hy + headR + 2)} ${R(cx + headR - 4)} ${R(hy + 10)} L ${R(cx + headR - 5)} ${R(hy + 7)} Q ${cx} ${R(hy + headR - 3)} ${R(cx - headR + 5)} ${R(hy + 7)} Z" fill="${SKIN_D}" opacity="0.35" stroke="none"/>
-      ${g === 'f' ? hairF : hairM}
-      ${headband}${crown}
-      ${brow(-1)}${brow(1)}${eyes}${lash}${cheeks}${mouth}
-    </g>
+    ${boots}
+    ${fists}
+    <path d="${headP}" fill="${SKIN}" stroke="${OUT}" stroke-width="4.2"/>
+    ${g === 'f' ? hairF : hairM}
+    ${headband}${crown}
+    ${brows}${eyes}${lash}
+    <circle cx="${cx - 14}" cy="${hy + 10}" r="3" fill="#ef8d66" opacity="0.4"/>
+    <circle cx="${cx + 14}" cy="${hy + 10}" r="3" fill="#ef8d66" opacity="0.4"/>
+    ${mouth}
+    ${overlays}
     ${wind}
     ${restOverlay}
   </svg>`;
