@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>角色生成器調參預覽（開發用）</title>
+<style>
+  body { font-family: 'Segoe UI', 'Noto Sans TC', sans-serif; background: #17181c; color: #eee; margin: 0; padding: 16px; }
+  h1 { font-size: 18px; } h2 { font-size: 15px; margin: 24px 0 8px; color: #fbbf24; }
+  .wrap { display: flex; gap: 24px; flex-wrap: wrap; }
+  .stage-box { width: 300px; background: #23242a; border-radius: 12px; padding: 12px; }
+  .controls { flex: 1; min-width: 300px; max-width: 460px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; }
+  .row label { width: 92px; flex-shrink: 0; }
+  .row input[type=range] { flex: 1; }
+  .row .val { width: 34px; text-align: right; color: #fbbf24; font-weight: 700; }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
+  .cell { background: #23242a; border-radius: 12px; padding: 8px; text-align: center; }
+  .cell .cap { font-size: 12px; color: #aaa; margin-top: 6px; line-height: 1.5; }
+  button { background: #333; color: #eee; border: 1px solid #555; border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: 12px; }
+  button:hover { background: #444; }
+  select { background: #333; color: #eee; border: 1px solid #555; border-radius: 6px; padding: 4px; }
+</style>
+</head>
+<body>
+<h1>筋肉人角色生成器 — 調參預覽</h1>
+<div class="wrap">
+  <div class="stage-box"><div id="stage"></div></div>
+  <div class="controls">
+    <div class="row"><label>性別</label>
+      <select id="c-gender"><option value="m">男</option><option value="f">女</option></select>
+      <label style="width:auto">階段</label>
+      <select id="c-stage"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+      <label style="width:auto"><input type="checkbox" id="c-rest"> 休養</label>
+    </div>
+    <div class="row"><label>身高</label><input type="range" id="c-height" min="145" max="200" value="172"><span class="val" id="v-height">172</span></div>
+    <div class="row"><label>體重</label><input type="range" id="c-weight" min="40" max="130" value="68"><span class="val" id="v-weight">68</span></div>
+    <div id="score-sliders"></div>
+    <div class="row"><label>耐力</label><input type="range" id="c-endurance" min="0" max="100" value="0"><span class="val" id="v-endurance">0</span></div>
+    <div class="row" style="margin-top:10px">
+      <button onclick="preset({chest:0,back:0,legs:0,shoulders:0,biceps:0,triceps:0},0)">全 0（新用戶）</button>
+      <button onclick="preset({chest:85,back:80,legs:12,shoulders:85,biceps:80,triceps:75,core:40},20)">上壯下細</button>
+      <button onclick="preset({chest:25,back:30,legs:95,shoulders:20,biceps:20,triceps:20,core:50},40)">腿王</button>
+      <button onclick="preset({chest:70,back:70,legs:70,shoulders:70,biceps:70,triceps:70,core:70},70)">均衡 70</button>
+    </div>
+  </div>
+</div>
+
+<h2>典型組合一覽（畫風確認用）</h2>
+<div class="gallery" id="gallery"></div>
+
+<script src="js/avatar.js"></script>
+<script>
+const PARTS = ['chest','back','legs','shoulders','biceps','triceps','core'];
+const LABELS = {chest:'胸',back:'背',legs:'腿',shoulders:'肩',biceps:'二頭',triceps:'三頭',core:'核心'};
+const sliders = document.getElementById('score-sliders');
+PARTS.forEach(p => {
+  sliders.insertAdjacentHTML('beforeend',
+    `<div class="row"><label>${LABELS[p]}分數</label><input type="range" id="c-${p}" min="0" max="100" value="0"><span class="val" id="v-${p}">0</span></div>`);
+});
+
+function cur() {
+  const scores = {};
+  PARTS.forEach(p => scores[p] = +document.getElementById('c-' + p).value);
+  return {
+    gender: document.getElementById('c-gender').value,
+    height: +document.getElementById('c-height').value,
+    weight: +document.getElementById('c-weight').value,
+    stageIndex: +document.getElementById('c-stage').value,
+    resting: document.getElementById('c-rest').checked,
+    endurance: +document.getElementById('c-endurance').value,
+    scores,
+  };
+}
+function render() {
+  ['height','weight','endurance',...PARTS].forEach(k =>
+    document.getElementById('v-' + k).textContent = document.getElementById('c-' + k).value);
+  document.getElementById('stage').innerHTML = buildKinniku(cur());
+}
+function preset(scores, endurance) {
+  PARTS.forEach(p => document.getElementById('c-' + p).value = scores[p] ?? 0);
+  document.getElementById('c-endurance').value = endurance;
+  render();
+}
+document.querySelectorAll('input,select').forEach(el => el.addEventListener('input', render));
+render();
+
+// ── 畫風確認 gallery ──
+const G = [
+  ['新用戶・BMI 21', {gender:'m',height:172,weight:63,stageIndex:0,scores:{}}],
+  ['新用戶・偏瘦 BMI 17', {gender:'m',height:178,weight:54,stageIndex:0,scores:{}}],
+  ['新用戶・偏壯 BMI 29', {gender:'m',height:170,weight:84,stageIndex:0,scores:{}}],
+  ['上壯下細（靈魂所在）', {gender:'m',height:172,weight:75,stageIndex:2,scores:{chest:85,back:80,legs:12,shoulders:85,biceps:82,triceps:75,core:45},endurance:20}],
+  ['腿王・上身小鳥', {gender:'m',height:172,weight:70,stageIndex:2,scores:{chest:22,back:28,legs:95,shoulders:18,biceps:15,triceps:18,core:50}}],
+  ['均衡 70・肌肉戰士', {gender:'m',height:175,weight:78,stageIndex:3,scores:{chest:70,back:70,legs:70,shoulders:70,biceps:70,triceps:70,core:70},endurance:60}],
+  ['女性・均衡 75', {gender:'f',height:163,weight:58,stageIndex:3,scores:{chest:75,back:75,legs:75,shoulders:75,biceps:70,triceps:70,core:75},endurance:55}],
+  ['女性・上壯下細', {gender:'f',height:160,weight:55,stageIndex:1,scores:{chest:80,back:75,legs:10,shoulders:80,biceps:75,triceps:70,core:30}}],
+  ['傳奇冠軍・全滿', {gender:'m',height:180,weight:92,stageIndex:5,scores:{chest:100,back:100,legs:100,shoulders:100,biceps:100,triceps:100,core:100},endurance:90}],
+  ['休養模式', {gender:'m',height:172,weight:70,stageIndex:2,scores:{chest:60,back:55,legs:50,shoulders:55,biceps:50,triceps:45,core:40},resting:true}],
+  ['腿部衰退預警（變暗）', {gender:'m',height:172,weight:72,stageIndex:2,scores:{chest:65,back:60,legs:55,shoulders:60,biceps:55,triceps:50,core:45},dimParts:['legs']}],
+  ['大體重・低核心（肚腩）', {gender:'m',height:168,weight:95,stageIndex:1,scores:{chest:40,back:35,legs:30,shoulders:35,biceps:30,triceps:25,core:10}}],
+];
+const gal = document.getElementById('gallery');
+G.forEach(([cap, o]) => {
+  gal.insertAdjacentHTML('beforeend', `<div class="cell">${buildKinniku(o)}<div class="cap">${cap}</div></div>`);
+});
+</script>
+</body>
+</html>
