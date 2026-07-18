@@ -28,80 +28,6 @@ const PRESET_EXERCISES = {
   core:    ['仰臥起坐','捲腹','反向捲腹','自行車捲腹','平板支撐','側平板','動態平板','俄羅斯轉體','懸吊舉腿','懸吊屈膝舉腿','仰臥舉腿','剪刀腳','死蟲','健腹輪','山式爬行','V字起身','超人式','臀橋'],
 };
 
-// Free exercise GIF map: Chinese name → folder in free-exercise-db on GitHub
-const GIF_MAP = {
-  // 胸
-  '啞鈴臥推':           'Dumbbell_Bench_Press',
-  '槓鈴臥推':           'Barbell_Bench_Press_-_Medium_Grip',
-  '上斜啞鈴臥推':       'Incline_Dumbbell_Press',
-  '啞鈴飛鳥':           'Dumbbell_Flyes',
-  '上斜啞鈴飛鳥':       'Incline_Dumbbell_Flyes',
-  '伏地挺身':           'Pushups',
-  '鑽石伏地挺身':       'Push-Ups_-_Close_Triceps_Position',
-  '蝴蝶機夾胸':         'Cable_Crossover',
-  // 背
-  '引體向上':           'Pullups',
-  '反握引體向上':       'Chin-Up',
-  '槓鈴划船':           'Bent_Over_Barbell_Row',
-  '啞鈴划船':           'One-Arm_Dumbbell_Row',
-  '滑輪下拉':           'Wide-Grip_Lat_Pulldown',
-  '坐姿繩索划船':       'Seated_Cable_Rows',
-  '硬舉':               'Barbell_Deadlift',
-  '背伸展':             'Hyperextensions_Back_Extensions',
-  '臉拉':               'Face_Pull',
-  '繩索直臂下拉':       'Straight-Arm_Pulldown',
-  // 腿
-  '深蹲':               'Barbell_Full_Squat',
-  '保加利亞分腿蹲':     'Split_Squat_with_Dumbbells',
-  '弓箭步':             'Dumbbell_Lunges',
-  '行走弓箭步':         'Bodyweight_Walking_Lunge',
-  '腿推機':             'Leg_Press',
-  '腿彎舉（臥式）':     'Lying_Leg_Curls',
-  '腿彎舉（坐式）':     'Seated_Leg_Curl',
-  '腿伸展':             'Leg_Extensions',
-  '臀推':               'Barbell_Hip_Thrust',
-  '羅馬尼亞硬舉':       'Romanian_Deadlift',
-  '小腿提踵（站姿）':   'Standing_Calf_Raises',
-  '小腿提踵（坐姿）':   'Seated_Calf_Raise',
-  // 肩
-  '啞鈴肩推':           'Dumbbell_Shoulder_Press',
-  '槓鈴肩推':           'Seated_Barbell_Military_Press',
-  'Arnold推舉':          'Arnold_Dumbbell_Press',
-  '側平舉':             'Side_Lateral_Raise',
-  '前平舉':             'Front_Dumbbell_Raise',
-  '後三角啞鈴飛鳥':     'Seated_Bent-Over_Rear_Delt_Raise',
-  '啞鈴聳肩':           'Dumbbell_Shrug',
-  '槓鈴聳肩':           'Barbell_Shrug',
-  '直立划船':           'Upright_Barbell_Row',
-  // 二頭
-  '啞鈴彎舉':           'Dumbbell_Alternate_Bicep_Curl',
-  '槓鈴彎舉':           'Barbell_Curl',
-  'EZ槓彎舉':           'EZ-Bar_Curl',
-  '錘式彎舉':           'Hammer_Curls',
-  '集中彎舉':           'Concentration_Curls',
-  '斜板彎舉（牧師凳）': 'Preacher_Curl',
-  // 三頭
-  '繩索三頭下壓':        'Triceps_Pushdown',
-  '直桿三頭下壓':        'Triceps_Pushdown',
-  '法式彎舉（EZ槓）':   'EZ-Bar_Skullcrusher',
-  '法式彎舉（啞鈴）':   'Lying_Dumbbell_Tricep_Extension',
-  '窄握臥推':           'Close-Grip_Barbell_Bench_Press',
-  '雙槓撐體（三頭）':   'Dips_-_Triceps_Version',
-  '三頭踢回（Kickback）':'Tricep_Dumbbell_Kickback',
-  // 核心
-  '仰臥起坐':           'Sit-Up',
-  '捲腹':               'Crunches',
-  '反向捲腹':           'Reverse_Crunch',
-  '自行車捲腹':         'Oblique_Crunches',
-  '平板支撐':           'Plank',
-  '側平板':             'Side_Bridge',
-  '俄羅斯轉體':         'Russian_Twist',
-  '懸吊舉腿':           'Hanging_Leg_Raise',
-  '仰臥舉腿':           'Flat_Bench_Lying_Leg_Raise',
-  '健腹輪':             'Ab_Roller',
-  '山式爬行':           'Mountain_Climbers',
-};
-
 const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 const IMG_EXT  = '/0.jpg';
 
@@ -188,16 +114,52 @@ function calcDuration(s, e) {
   return d > 0 && d <= 600 ? d : null;
 }
 
-// GIF / demo
-function getExGif(name) {
-  const folder = GIF_MAP[name];
-  return folder ? IMG_BASE + folder + IMG_EXT : null;
+// ── 示範媒體 ────────────────────────────────────────────────────────────────
+// 優先序：本地 exercises-dataset GIF → free-exercise-db 遠端靜態圖 → YouTube 按鈕。
+// 本地資料集不隨 repo 散布（媒體 © Gym visual），線上版會自動 fallback 到遠端圖。
+const EX_INDEX_BY_ID = {};
+(window.EXERCISE_INDEX || []).forEach(e => { EX_INDEX_BY_ID[e.id] = e; });
+
+function _mapEntry(name) { return (window.EXERCISE_MAP || {})[name] || null; }
+
+function getDemoSources(name) {
+  const m = _mapEntry(name), srcs = [];
+  const ex = m && m.l ? EX_INDEX_BY_ID[m.l] : null;
+  if (ex && ex.gif_url) srcs.push('exercises-dataset/' + ex.gif_url);
+  if (m && m.f) srcs.push(IMG_BASE + m.f + IMG_EXT);
+  return srcs;
+}
+function getThumbSources(name) {
+  const m = _mapEntry(name), srcs = [];
+  const ex = m && m.l ? EX_INDEX_BY_ID[m.l] : null;
+  if (ex && ex.image) srcs.push('exercises-dataset/' + ex.image);
+  if (m && m.f) srcs.push(IMG_BASE + m.f + IMG_EXT);
+  return srcs;
+}
+// 載入失敗時輪替下一個來源（data-next 以 | 分隔）
+function _demoNext(img) {
+  const rest = (img.dataset.next || '').split('|').filter(Boolean);
+  if (rest.length) { img.dataset.next = rest.slice(1).join('|'); img.src = rest[0]; }
+  else img.parentNode.innerHTML = '<div class="gif-fail">示意圖載入失敗</div>';
+}
+function _thumbNext(img) {
+  const rest = (img.dataset.next || '').split('|').filter(Boolean);
+  if (rest.length) { img.dataset.next = rest.slice(1).join('|'); img.src = rest[0]; }
+  else img.outerHTML = '<span class="ex-thumb-icon">💪</span>';
+}
+function _demoLoaded(img) {
+  const prev = img.previousElementSibling;
+  if (prev && prev.classList.contains('gif-loading')) prev.remove();
+  const attr = document.getElementById('demo-attr');
+  if (attr) attr.textContent = img.src.includes('exercises-dataset')
+    ? '示範動畫 © Gym visual — gymvisual.com'
+    : '示範圖：free-exercise-db（Public Domain）';
 }
 
 function showDemo(name) {
   if (document.getElementById('demo-modal')) return;
   lockScroll();
-  const gifUrl = getExGif(name);
+  const srcs = getDemoSources(name);
   const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' 健身 教學 示範');
   const esc = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 
@@ -211,13 +173,14 @@ function showDemo(name) {
         <button class="modal-close" onclick="closeDemo()">✕</button>
       </div>
       <div class="modal-gif-wrap" id="gif-wrap">
-        ${gifUrl
+        ${srcs.length
           ? `<div class="gif-loading">載入中…</div>
-             <img src="${gifUrl}" alt="${esc}" class="ex-gif"
-               onload="this.previousElementSibling.remove()"
-               onerror="this.parentNode.innerHTML='<div class=gif-fail>示意圖載入失敗</div>'">`
+             <img src="${srcs[0]}" data-next="${srcs.slice(1).join('|')}" alt="${esc}" class="ex-gif"
+               onload="_demoLoaded(this)"
+               onerror="_demoNext(this)">`
           : '<div class="gif-fail">此動作暫無示意圖</div>'}
       </div>
+      <div id="demo-attr" class="demo-attr"></div>
       <a href="${ytUrl}" target="_blank" class="btn btn-outline" style="margin:12px 0 0">▶ YouTube 教學影片</a>
     </div>`;
   document.body.appendChild(el);
@@ -1133,12 +1096,11 @@ function _buildPickerList(q) {
   const item = name => {
     const isAdded = added.has(name), isRecent = !qLow && recentNames.includes(name);
     const esc = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-    const gifFolder = GIF_MAP[name];
-    const thumbSrc = gifFolder ? IMG_BASE + gifFolder + IMG_EXT : null;
+    const thumbs = getThumbSources(name);
 
-    const thumbHtml = thumbSrc
-      ? `<img class="ex-thumb" src="${thumbSrc}" loading="lazy" alt=""
-           onerror="this.outerHTML='<span class=ex-thumb-icon>💪</span>'">`
+    const thumbHtml = thumbs.length
+      ? `<img class="ex-thumb" src="${thumbs[0]}" data-next="${thumbs.slice(1).join('|')}" loading="lazy" alt=""
+           onerror="_thumbNext(this)">`
       : `<span class="ex-thumb-icon">💪</span>`;
 
     return `<div class="picker-ex-row${isAdded?' picker-ex-added':''}" data-name="${esc}">
