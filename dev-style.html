@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>畫風實驗：連續輪廓筋肉人（步驟1，非參數化）</title>
+<style>
+  body { background: #1a1b20; color: #eee; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+  h1 { font-size: 16px; }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .cell { background: #24252c; border-radius: 14px; padding: 14px; width: 300px; text-align: center; }
+  .cap { font-size: 13px; color: #fbbf24; margin-top: 8px; font-weight: 700; }
+  .sub { font-size: 11.5px; color: #999; margin-top: 3px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<h1>連續輪廓筋肉人 — 三種誇張度（全部位 80 分固定狀態）</h1>
+<div class="row" id="row"></div>
+<script>
+// 畫風核心：上身（頸→斜方→三角肌球→二頭→肘→前臂→拳→內緣→腋→背闊→V收腰→髖）
+// 是一條連續閉合貝茲路徑。線寬三層：外輪廓 5 / 內部分隔 1.8 / 排線 1.4。
+const OUT = '#16100a', SKIN = '#f0b078';
+
+function hero(e) {  // e = 誇張度 0(A) / 1(B) / 2(C)
+  const cx = 150, W = 300, H = 410;
+  const DT  = 62 + e * 8;    // 三角肌最外 x
+  const BI  = DT + 7;        // 二頭肌最外 x
+  const AP  = 42 + e * 3;    // 腋下 x
+  const LAT = 45 + e * 5;    // 背闊最寬 x
+  const WA  = 26 - e * 4;    // 腰半寬
+  const TH  = 34 + e * 4;    // 大腿外緣 x
+  const HD  = 19 - e * 0.8;  // 頭半寬
+  const FA  = 1 - e * 0.08;  // 前臂縮減（越誇張前臂相對越細）
+
+  // ── 上身連續輪廓（左半錨點；右半鏡射並帶 1px 手繪抖動）──
+  // 段格式：[kind, ...ctrl, endX, endY]，x 為相對 cx（左為負）
+  const segs = [
+    ['Q', -34, 72,          -44, 86],                      // 斜方肌稜線（高聳）
+    ['C', -56, 76, -DT - 2, 84,  -DT - 3, 106],            // 三角肌大球爆出
+    ['Q', -DT - 2, 118,     -DT + 1, 124],                 // 三角下懸微收
+    ['C', -BI - 4, 128, -BI - 2, 138,  -BI - 3, 148],      // 二頭肌球狀外凸
+    ['Q', -BI - 2, 158,     -BI + 2, 164],                 // 肘
+    ['Q', -BI + 4, 176,     -BI + 12 * FA, 186],           // 前臂（短、內收）
+    ['Q', -BI + 16, 192,    -BI + 22, 194],                // 腕（拳頭圓球覆蓋）
+    ['Q', -BI + 28, 192,    -BI + 26, 184],                // 內腕
+    ['Q', -BI + 22, 168,    -BI + 18, 156],                // 內前臂→內肘
+    ['Q', -BI + 14, 140,    -AP - 2, 128],                 // 內二頭
+    ['Q', -AP - 3, 126,     -AP, 124],                     // 腋下
+    ['Q', -LAT - 3, 138,    -LAT, 152],                    // 背闊外擴
+    ['C', -LAT + 8, 176, -WA - 8, 190,  -WA, 206],         // 極端 V 收腰
+    ['Q', -WA - 1, 216,     -WA - 4, 226],                 // 髖
+  ];
+  const j = i => ((i * 7) % 3 - 1) * 0.8;
+  let d = `M ${cx - 16} 70 `;
+  segs.forEach(([k, ...a], i) => {
+    if (k === 'Q') d += `Q ${cx + a[0] + j(i)} ${a[1]} ${cx + a[2]} ${a[3] + j(i)} `;
+    else d += `C ${cx + a[0]} ${a[1]} ${cx + a[2] + j(i)} ${a[3]} ${cx + a[4]} ${a[5] + j(i)} `;
+  });
+  d += `L ${cx + WA + 4} 226 `;
+  for (let i = segs.length - 1; i >= 0; i--) {
+    const [k, ...a] = segs[i];
+    const prev = i > 0 ? segs[i - 1] : null;
+    const [pex, pey] = prev ? [prev[prev.length - 2], prev[prev.length - 1]] : [-16, 70];
+    if (k === 'Q') d += `Q ${cx - a[0] - j(i)} ${a[1]} ${cx - pex} ${pey - j(i)} `;
+    else d += `C ${cx - a[2]} ${a[3]} ${cx - a[0] - j(i)} ${a[1]} ${cx - pex} ${pey - j(i)} `;
+  }
+  const torsoArms = d + `Q ${cx} 64 ${cx - 16} 70 Z`;
+
+  // ── 腿（每腿連續閉合：髖→股四頭→膝收窄→小腿菱形→細踝→足）──
+  const legT = 224, KN = 292, AN = 336, FT = 350;
+  const leg = s => { const o = x => cx + s * x;
+    return `M ${o(WA + 4)} ${legT}
+      C ${o(TH + 2)} ${legT + 10} ${o(TH + 4)} ${legT + 22} ${o(TH)} ${legT + 36}
+      Q ${o(TH - 4)} ${KN - 20} ${o(24)} ${KN - 6}
+      C ${o(30)} ${KN + 2} ${o(31)} ${KN + 12} ${o(27)} ${KN + 22}
+      Q ${o(22)} ${AN - 8} ${o(17)} ${AN}
+      L ${o(18)} ${FT - 6} Q ${o(12)} ${FT} ${o(5)} ${FT - 2}
+      L ${o(4)} ${AN}
+      Q ${o(2)} ${KN + 26} ${o(5)} ${KN + 2}
+      Q ${o(7)} ${KN - 16} ${o(5)} ${legT + 34}
+      Q ${o(4)} ${legT + 12} ${o(1)} ${legT + 2} Z`; };
+
+  // ── 頭/頸 ──
+  const hy = 54;
+  const headP = `M ${cx - HD} ${hy - 4}
+    Q ${cx - HD - 2} ${hy + 13} ${cx - HD * 0.55} ${hy + 21}
+    Q ${cx} ${hy + 27} ${cx + HD * 0.55} ${hy + 21}
+    Q ${cx + HD + 2} ${hy + 13} ${cx + HD} ${hy - 4}
+    Q ${cx + HD * 0.8} ${hy - 19} ${cx} ${hy - 20}
+    Q ${cx - HD * 0.8} ${hy - 19} ${cx - HD} ${hy - 4} Z`;
+  const neck = `M ${cx - 16} ${hy + 12} L ${cx - 19} 82 L ${cx + 19} 82 L ${cx + 16} ${hy + 12} Z`;
+
+  // ── 內部肌肉分隔線 ──
+  const inner = `
+    <path d="M ${cx - 34} 84 Q ${cx - 12} 94 ${cx - 3} 93 M ${cx + 34} 83 Q ${cx + 12} 93 ${cx + 3} 93"/>
+    <path d="M ${cx} 98 L ${cx} 142"/>
+    <path d="M ${cx - 2} 140 Q ${cx - 32} 148 ${cx - AP - 2} 124 M ${cx + 2} 140 Q ${cx + 32} 149 ${cx + AP + 2} 123"/>
+    <path d="M ${cx - 38} 92 Q ${cx - 46} 108 ${cx - AP - 1} 124 M ${cx + 38} 91 Q ${cx + 46} 107 ${cx + AP + 1} 123"/>
+    <path d="M ${cx - DT + 3} 120 Q ${cx - BI + 4} 130 ${cx - BI + 8} 148 M ${cx + DT - 3} 119 Q ${cx + BI - 4} 129 ${cx + BI - 8} 147"/>
+    <path d="M ${cx - BI + 6} 164 Q ${cx - BI + 12} 172 ${cx - BI + 18} 178 M ${cx + BI - 6} 163 Q ${cx + BI - 12} 171 ${cx + BI - 18} 177"/>
+    <path d="M ${cx} 148 L ${cx} 212"/>
+    <path d="M ${cx - 16} 158 Q ${cx} 163 ${cx + 16} 158 M ${cx - 17} 175 Q ${cx} 180 ${cx + 17} 175 M ${cx - 15} 192 Q ${cx} 197 ${cx + 15} 192"/>
+    <path d="M ${cx - 19} 152 Q ${cx - 23} 180 ${cx - 17} 208 M ${cx + 19} 151 Q ${cx + 23} 179 ${cx + 17} 207"/>
+    <path d="M ${cx - LAT + 2} 160 Q ${cx - 32} 182 ${cx - WA - 3} 204 M ${cx + LAT - 2} 159 Q ${cx + 32} 181 ${cx + WA + 3} 203"/>
+    <path d="M ${cx - TH + 4} ${legT + 26} Q ${cx - 20} ${legT + 48} ${cx - 19} ${KN - 14} M ${cx + TH - 4} ${legT + 25} Q ${cx + 20} ${legT + 47} ${cx + 19} ${KN - 15}"/>
+    <path d="M ${cx - 24} ${KN + 6} Q ${cx - 17} ${KN + 18} ${cx - 14} ${KN + 28} M ${cx + 24} ${KN + 5} Q ${cx + 17} ${KN + 17} ${cx + 14} ${KN + 27}"/>`;
+
+  // ── 排線陰影 ──
+  const tick = (x, y, dx, dy) => `M ${x} ${y} l ${dx} ${dy} `;
+  let hs = '';
+  for (let i = 0; i < 5; i++) { // 胸下緣（沿弧）
+    hs += tick(cx - 10 - i * 7, 143 - i * 3.2, -4, -6) + tick(cx + 10 + i * 7, 142 - i * 3.2, 4, -6);
+  }
+  for (let i = 0; i < 4; i++) { // 三角肌下緣
+    hs += tick(cx - DT + 2 + i * 4, 114 + i * 4, 6, -4) + tick(cx + DT - 2 - i * 4, 113 + i * 4, -6, -4);
+  }
+  for (let i = 0; i < 3; i++) { // 背闊/腋下
+    hs += tick(cx - LAT + 3 + i * 4, 150 + i * 7, 6, -3) + tick(cx + LAT - 3 - i * 4, 149 + i * 7, -6, -3);
+  }
+  for (let i = 0; i < 3; i++) { // 腹側
+    hs += tick(cx - WA - 2 - i * 2, 200 - i * 13, 5, -4) + tick(cx + WA + 2 + i * 2, 199 - i * 13, -5, -4);
+  }
+  hs += tick(cx - 13, 70, 3, 6) + tick(cx - 8, 68, 2, 7) + tick(cx + 13, 70, -3, 6) + tick(cx + 8, 68, -2, 7); // 頸側
+  for (let i = 0; i < 3; i++) { // 二頭下緣
+    hs += tick(cx - BI + 4 + i * 3, 152 + i * 4, 5, -3) + tick(cx + BI - 4 - i * 3, 151 + i * 4, -5, -3);
+  }
+  let hs2 = ''; // 大腿下/膝上、小腿
+
+  for (let i = 0; i < 3; i++) {
+    hs2 += tick(cx - TH + 8 + i * 4, KN - 20 + i * 4, 5, -4) + tick(cx + TH - 8 - i * 4, KN - 21 + i * 4, -5, -4);
+    hs2 += tick(cx - 22 + i * 3, KN + 24 + i * 3, 4, -5) + tick(cx + 22 - i * 3, KN + 23 + i * 3, -4, -5);
+  }
+
+  // ── 短褲 ──
+  const trunks = `M ${cx - WA - 6} 216
+    L ${cx + WA + 6} 215
+    Q ${cx + WA + 12} 232 ${cx + TH - 2} ${legT + 26}
+    L ${cx + 9} ${legT + 24}
+    Q ${cx} ${legT + 36} ${cx - 9} ${legT + 24}
+    L ${cx - TH + 2} ${legT + 26}
+    Q ${cx - WA - 12} 232 ${cx - WA - 6} 216 Z`;
+
+  // ── 靴子 ──
+  const boots = [-1, 1].map(s => { const o = x => cx + s * x;
+    return `<path d="M ${o(4)} ${AN - 5} L ${o(3)} ${FT - 4} Q ${o(13)} ${FT + 4} ${o(29)} ${FT - 1} L ${o(21)} ${AN - 5} Q ${o(12)} ${AN - 9} ${o(4)} ${AN - 5} Z"
+      fill="#b91c1c" stroke="${OUT}" stroke-width="3.4" stroke-linejoin="round"/>`; }).join('');
+
+  // ── 臉 + 髮 ──
+  const face = `
+    <path d="M ${cx - 14} ${hy - 3} L ${cx - 4} ${hy + 1} M ${cx + 14} ${hy - 4} L ${cx + 4} ${hy + 1}" stroke="${OUT}" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="${cx - 8}" cy="${hy + 6}" r="2.5" fill="${OUT}"/>
+    <circle cx="${cx + 8}" cy="${hy + 6}" r="2.5" fill="${OUT}"/>
+    <path d="M ${cx - 7} ${hy + 14} Q ${cx} ${hy + 19} ${cx + 8} ${hy + 13} L ${cx + 5} ${hy + 16.5} Q ${cx} ${hy + 19.5} ${cx - 4} ${hy + 16.5} Z" fill="#fff" stroke="${OUT}" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M ${cx - HD * 0.95} ${hy - 5}
+      L ${cx - HD * 0.9} ${hy - 23} L ${cx - HD * 0.5} ${hy - 15}
+      L ${cx - HD * 0.32} ${hy - 29} L ${cx - HD * 0.05} ${hy - 17}
+      L ${cx + HD * 0.22} ${hy - 28} L ${cx + HD * 0.45} ${hy - 16}
+      L ${cx + HD * 0.85} ${hy - 24} L ${cx + HD * 0.95} ${hy - 5}
+      Q ${cx} ${hy - 13} ${cx - HD * 0.95} ${hy - 5} Z"
+      fill="#241812" stroke="${OUT}" stroke-width="3" stroke-linejoin="round"/>`;
+
+  const fists = [-1, 1].map(s2 => { const fx = cx + s2 * (BI - 13), fy = 189;
+    return `<circle cx="${fx}" cy="${fy}" r="12.5" fill="${SKIN}" stroke="${OUT}" stroke-width="4.4"/>
+      <path d="M ${fx - s2 * 6} ${fy - 7} Q ${fx - s2 * 10} ${fy} ${fx - s2 * 6} ${fy + 7} M ${fx - s2 * 1} ${fy - 8} Q ${fx - s2 * 5} ${fy} ${fx - s2 * 1} ${fy + 8}"
+        fill="none" stroke="${OUT}" stroke-width="1.6" opacity="0.7"/>`; }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+    <path d="${leg(-1)}" fill="${SKIN}" stroke="${OUT}" stroke-width="4.6" stroke-linejoin="round"/>
+    <path d="${leg(1)}" fill="${SKIN}" stroke="${OUT}" stroke-width="4.6" stroke-linejoin="round"/>
+    <path d="${neck}" fill="${SKIN}" stroke="${OUT}" stroke-width="4"/>
+    <path d="${torsoArms}" fill="${SKIN}" stroke="${OUT}" stroke-width="5" stroke-linejoin="round"/>
+    <g fill="none" stroke="${OUT}" stroke-width="1.8" opacity="0.8" stroke-linecap="round">${inner}</g>
+    <path d="${hs}${hs2}" stroke="${OUT}" stroke-width="1.4" opacity="0.5" fill="none" stroke-linecap="round"/>
+    <path d="${trunks}" fill="#2563eb" stroke="${OUT}" stroke-width="4.4" stroke-linejoin="round"/>
+    ${boots}
+    ${fists}
+    <path d="${headP}" fill="${SKIN}" stroke="${OUT}" stroke-width="4.2"/>
+    ${face}
+  </svg>`;
+}
+
+const V = [
+  ['A・標準熱血', '肩寬 ≈ 頭寬 2.6 倍', 0],
+  ['B・誇張', '肩寬 ≈ 頭寬 3 倍', 1],
+  ['C・極端筋肉人', '肩寬 ≈ 頭寬 3.4 倍・細前臂', 2],
+];
+const row = document.getElementById('row');
+V.forEach(([cap, sub, e]) => {
+  row.insertAdjacentHTML('beforeend', `<div class="cell">${hero(e)}<div class="cap">${cap}</div><div class="sub">${sub}</div></div>`);
+});
+</script>
+</body>
+</html>
