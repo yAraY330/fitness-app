@@ -440,6 +440,17 @@ a, button, [role="button"], input, select, textarea, label {
 .option-btn { flex: 1; padding: 10px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; font-size: 14px; font-weight: 700; text-align: center; transition: all 0.15s; }
 .option-btn.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
 
+/* ── Onboarding Stage 5：筋肉人分身建立頁 ── */
+/* impeccable onboard: Show don't tell — avatar 是最先看到的 aha moment */
+/* ui-ux-pro-max weight-hierarchy: gradient 大標題 + 纖細 hint 文字；primary-action: 單一 CTA */
+.ob-showcase { text-align: center; padding: 20px 0 4px; }
+.ob-tagline { font-size: 24px; font-weight: 900; font-family: var(--font-display); color: var(--text); margin-bottom: 12px; letter-spacing: 0.3px; line-height: 1.2; }
+/* gsap-core: -webkit-background-clip text 讓 hot-grad 標題成熱血色彩關鍵視覺 */
+.ob-hot { background: var(--hot-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.ob-avatar-wrap { width: 200px; margin: 0 auto 10px; }
+.ob-hint { font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; line-height: 1.65; }
+.ob-cta { margin-top: 8px; }
+
 /* ── Rest timer preset bar ── */
 .rest-setting-bar {
   display: flex; align-items: center; justify-content: space-between;

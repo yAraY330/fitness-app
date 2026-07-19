@@ -1763,17 +1763,28 @@ function buildAvatarSvg(a, level) {
 
 window._obG = 'm';
 
+// 零分數的 buildKinniku（onboarding 預覽用：只依 BMI/身高做基準體型）
+function _obBuildKinniku(gender, height, weight) {
+  return buildKinniku({
+    gender, height, weight,
+    scores: { chest:0, back:0, legs:0, shoulders:0, biceps:0, triceps:0, core:0 },
+    endurance: 0, stageIndex: 0, resting: false, dimParts: []
+  });
+}
+
 function onboarding(params, {title}) {
   const a = DB.getAvatar();
   const isEdit = !!a;
   title.textContent = isEdit ? '編輯角色資料' : '建立你的角色';
   window._obG = a?.gender || 'm';
+  const h0 = a?.height || 170, w0 = a?.weight || 65;
   document.getElementById('content').innerHTML = `
-    <div class="card" style="text-align:center">
-      <div id="ob-preview" style="margin:4px auto 8px;width:150px">
-        ${buildAvatarSvg({gender:window._obG, height:a?.height||170, weight:a?.weight||65}, levelInfo(totalXp()).level)}
+    <div class="ob-showcase">
+      <div class="ob-tagline">${isEdit ? '更新你的<span class="ob-hot">角色資料</span>' : '打造你的<span class="ob-hot">筋肉人</span>分身'}</div>
+      <div id="ob-preview" class="ob-avatar-wrap">
+        ${_obBuildKinniku(window._obG, h0, w0)}
       </div>
-      ${isEdit ? '' : `<p style="font-size:13px;color:var(--text-secondary);line-height:1.7">輸入你的資料，生成專屬虛擬人物。<br>之後每次運動都會化成經驗值，<br>角色會跟著你一起變強！💪</p>`}
+      ${isEdit ? '' : '<p class="ob-hint">輸入資料即時預覽・每次訓練都讓他變強</p>'}
     </div>
     <div class="card">
       <div class="form-group">
@@ -1796,7 +1807,17 @@ function onboarding(params, {title}) {
         <input class="form-input" id="ob-weight" type="number" inputmode="decimal" placeholder="例：65" value="${a?.weight||''}" oninput="_obPreview()">
       </div>
     </div>
-    <button class="btn btn-primary" onclick="_obSave()">${isEdit ? '儲存變更' : '🎮 開始養成之旅'}</button>`;
+    <button class="btn btn-primary ob-cta" onclick="_obSave()">${isEdit ? '儲存變更' : '🎮 開始養成之旅'}</button>`;
+  // gsap-core: avatar bounce-in back.out(1.7) scale 0.72→1；prefers-reduced-motion 友好
+  if (typeof ANIM !== 'undefined') {
+    ANIM.pageEnter();
+    requestAnimationFrame(() => {
+      const svg = document.querySelector('#ob-preview svg');
+      if (svg && typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion:reduce)').matches) {
+        gsap.from(svg, { scale: 0.72, autoAlpha: 0, duration: 0.38, ease: 'back.out(1.7)', delay: 0.06 });
+      }
+    });
+  }
 }
 
 function _obGender(g) {
@@ -1810,7 +1831,7 @@ function _obPreview() {
   const h = parseFloat(document.getElementById('ob-height')?.value) || 170;
   const w = parseFloat(document.getElementById('ob-weight')?.value) || 65;
   const el = document.getElementById('ob-preview');
-  if (el) el.innerHTML = buildAvatarSvg({gender:window._obG, height:h, weight:w}, levelInfo(totalXp()).level);
+  if (el) el.innerHTML = _obBuildKinniku(window._obG, h, w);
 }
 
 function _obSave() {

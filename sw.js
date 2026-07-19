@@ -1,4 +1,4 @@
-const CACHE = 'fitness-v15';
+const CACHE = 'fitness-v16';
 const MEDIA_CACHE = 'fitness-media-v1';
 const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
   './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './manifest.json'];
