@@ -503,6 +503,19 @@ a, button, [role="button"], input, select, textarea, label {
 .gym-credit { margin: 14px 0 4px; text-align: center; font-size: 10px; color: var(--text-secondary); }
 .gym-credit a { color: var(--text-secondary); text-decoration: underline; }
 
+/* ── 戰績頁 Stage 3：hero strip + mini bars + endurance ── */
+/* ui-ux-pro-max weight-hierarchy: Barlow Condensed 900 大數字 + uppercase tracking label */
+.prog-stat-strip { display: flex; align-items: center; justify-content: space-around; }
+.prog-stat-block { text-align: center; flex: 1; padding: 4px 0; }
+.prog-stat-num { font-size: 40px; font-weight: 900; font-family: var(--font-display); line-height: 1; }
+.prog-stat-label { font-size: 10px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px; }
+.prog-stat-divider { width: 1px; height: 44px; background: var(--border); flex-shrink: 0; }
+/* gsap-core: psr-bar height 3px；animScoreBars() 從 0 動到 target width power2.out 0.55s */
+.prog-mini-bar-bg { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 5px; }
+.prog-mini-bar-fg { height: 100%; border-radius: 2px; }
+.prog-endurance-row { display: flex; align-items: center; gap: 14px; }
+.prog-endur-score { font-size: 44px; font-weight: 900; font-family: var(--font-display); line-height: 1; min-width: 56px; }
+
 /* ── Timer nav ── */
 .timer-nav-active { color: var(--primary) !important; }
 #timer-nav-icon { font-variant-numeric: tabular-nums; }

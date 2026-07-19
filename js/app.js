@@ -751,60 +751,76 @@ function _renderCalendar() {
 // ── Progress ───────────────────────────────────────────────────────────────
 
 function progress(_, {title}) {
-  title.textContent = '訓練進度';
+  title.textContent = '戰績';
   const es = engineState();
+  const allWorkouts = DB.all();
+  const today = getTodayStr();
 
-  // 各部位上次訓練
+  // ── 摘要統計 ──
+  const totalSessions = allWorkouts.length;
+  const { weekDates, weekCount } = getWeekStats();
+  const streak = getStreak();
+
+  // ── 各部位上次訓練 ──
   const partStatus = BODY_PARTS.map(p => {
     const last = DB.lastForPart(p.id);
     const d = last ? Math.floor((Date.now() - new Date(last.date+'T00:00:00').getTime()) / 86400000) : null;
     return { ...p, lastDate: last?.date || null, daysAgo: d };
   });
 
-  // 本週訓練量（各部位）
-  const { weekDates } = getWeekStats();
+  // ── 本週訓練量（各部位）──
   const [wkStart, wkEnd] = [weekDates[0], weekDates[6]];
   const weekVol = {};
-  DB.all().filter(w => w.type==='weight' && w.date>=wkStart && w.date<=wkEnd).forEach(w => {
+  allWorkouts.filter(w => w.type==='weight' && w.date>=wkStart && w.date<=wkEnd).forEach(w => {
     const vol = (w.exercises||[]).reduce((s,ex)=>(ex.sets||[]).reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),s),0);
     weekVol[w.bodyPart] = (weekVol[w.bodyPart]||0) + vol;
   });
 
-  // 最近 PR
+  // ── 最近 PR（grid，最多 6 筆）──
   const prs = DB._load().prs || {};
   const recentPRs = Object.entries(prs)
     .filter(([, pr]) => pr.maxWeight > 0 && pr.maxWeightDate)
     .map(([name, pr]) => ({ name, weight: pr.maxWeight, reps: pr.maxReps, date: pr.maxWeightDate }))
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 8);
+    .slice(0, 6);
 
-  // 跑步距離趨勢
-  const runs = DB.all()
+  // ── 有氧趨勢 ──
+  const runs = allWorkouts
     .filter(w => (w.type==='outdoor_run'||w.type==='indoor_run') && w.distance > 0)
-    .slice(0, 10).reverse();
+    .slice(-10);
+  const bikeRides = allWorkouts
+    .filter(w => w.type==='bike' && w.distance > 0)
+    .slice(-10);
 
-  // ── 渲染各部位狀態 ──
+  // ── 各部位 rows（含 mini bar + GSAP）──
+  // ui-ux-pro-max color-semantic: PART_COLORS per body part；dotColor = 訓練新鮮度語義色
   const partHtml = partStatus.map(p => {
     const d = p.daysAgo;
     const s = es.scores[p.id] || {};
     const score = Math.round(s.score || 0);
     const sc = _scoreColor(score);
+    const partColor = PART_COLORS[p.id] || 'var(--primary)';
     const dotColor = d===null ? 'var(--border)' : d===0 ? 'var(--success)' : d<=3 ? 'var(--primary)' : d<=7 ? 'var(--gold)' : 'var(--danger)';
     const ago = d===null ? '尚未訓練' : d===0 ? '今天' : d===1 ? '昨天' : `${d} 天前`;
     const dest = p.lastDate
       ? `App.goTo('dayDetail',{date:'${p.lastDate}'})`
-      : `App.goTo('selectType',{date:'${getTodayStr()}'})`;
+      : `App.goTo('selectType',{date:'${today}'})`;
     return `<div class="prog-part-row" onclick="${dest}">
       <span class="prog-part-dot" style="background:${dotColor}"></span>
-      <span class="prog-part-name">${p.label}</span>
-      <span class="prog-part-score-inline" style="color:${sc}">${score || '—'}</span>
-      <span class="prog-part-ago">${ago}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="prog-part-name">${p.label}</span>
+          <span class="prog-part-score-inline" style="color:${sc}">${score || '—'}</span>
+          <span class="prog-part-ago">${ago}</span>
+        </div>
+        ${score ? `<div class="prog-mini-bar-bg"><div class="prog-mini-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${partColor}"></div></div>` : ''}
+      </div>
       <span class="row-arrow">›</span>
     </div>`;
   }).join('');
 
-  // ── 渲染本週訓練量 ──
-  const maxVol = Math.max(1, ...Object.values(weekVol));
+  // ── 本週訓練量 bars（加 data-gsap="psr-bar" 觸發 GSAP）──
+  const maxVol = Math.max(1, ...Object.values(weekVol).length ? Object.values(weekVol) : [1]);
   const volRows = BODY_PARTS.filter(p => weekVol[p.id]).map(p => {
     const pct = Math.round((weekVol[p.id] / maxVol) * 100);
     const display = weekVol[p.id] >= 1000
@@ -812,40 +828,75 @@ function progress(_, {title}) {
       : Math.round(weekVol[p.id]);
     return `<div class="prog-vol-row">
       <div class="prog-vol-label">${p.label}</div>
-      <div class="prog-vol-bar-bg"><div class="prog-vol-bar-fg" style="width:${pct}%;background:${PART_COLORS[p.id]||'var(--primary)'}"></div></div>
+      <div class="prog-vol-bar-bg"><div class="prog-vol-bar-fg" data-gsap="psr-bar" style="width:${pct}%;background:${PART_COLORS[p.id]||'var(--primary)'}"></div></div>
       <div class="prog-vol-num">${display}</div>
     </div>`;
   }).join('');
 
-  // ── 渲染最近 PR ──
-  const prRows = recentPRs.length
-    ? recentPRs.map(pr => `
-      <div class="prog-pr-row" data-name="${escHtml(pr.name)}" onclick="showExerciseStats(this.dataset.name)">
-        <div class="prog-pr-name">${escHtml(pr.name)}</div>
-        <div class="prog-pr-right">
-          <span class="prog-pr-val">🏆 ${kgToDisplay(pr.weight)} ${unitLabel()} × ${pr.reps} 下</span>
-          <span class="prog-pr-date">${formatDateShort(pr.date)}</span>
-        </div>
-      </div>`).join('')
+  // ── PR grid（重用 stats-pr-grid / stats-pr-card CSS）──
+  // ui-ux-pro-max weight-hierarchy: val 用 font-display 900；label 全大寫 letter-spacing
+  const prHtml = recentPRs.length
+    ? `<div class="stats-pr-grid">${recentPRs.map(pr => `
+        <div class="stats-pr-card" data-name="${escHtml(pr.name)}" onclick="showExerciseStats(this.dataset.name)" style="cursor:pointer">
+          <div class="stats-pr-val">${kgToDisplay(pr.weight)}</div>
+          <div class="stats-pr-unit">${unitLabel()} × ${pr.reps}</div>
+          <div class="stats-pr-label">${escHtml(pr.name)}</div>
+          <div class="stats-pr-date">${formatDateShort(pr.date)}</div>
+        </div>`).join('')}</div>`
     : '<p class="prog-empty">尚無個人紀錄，完成訓練後自動追蹤</p>';
 
+  // ── 耐力分數 ──
+  const endurScore = es.endurance.score;
+  const endurColor = endurScore >= 70 ? 'var(--success)' : endurScore >= 40 ? 'var(--gold)' : 'var(--primary)';
+
   document.getElementById('content').innerHTML = `
+    <div class="card prog-stat-strip">
+      <div class="prog-stat-block">
+        <div class="prog-stat-num">${streak}</div>
+        <div class="prog-stat-label">🔥 連續天</div>
+      </div>
+      <div class="prog-stat-divider"></div>
+      <div class="prog-stat-block">
+        <div class="prog-stat-num">${weekCount}</div>
+        <div class="prog-stat-label">📅 本週訓練</div>
+      </div>
+      <div class="prog-stat-divider"></div>
+      <div class="prog-stat-block">
+        <div class="prog-stat-num">${totalSessions}</div>
+        <div class="prog-stat-label">🏋️ 累計次數</div>
+      </div>
+    </div>
     <div class="card">
-      <div class="prog-sec-title">各部位上次訓練</div>
+      <div class="prog-sec-title">各部位狀態</div>
       ${partHtml}
     </div>
+    ${endurScore > 0 ? `<div class="card">
+      <div class="prog-sec-title">體能耐力</div>
+      <div class="prog-endurance-row">
+        <span class="prog-endur-score" style="color:${endurColor}">${endurScore}</span>
+        <div style="flex:1">
+          <div class="prog-mini-bar-bg" style="height:6px"><div class="prog-mini-bar-fg" data-gsap="psr-bar" style="width:${endurScore}%;background:${endurColor}"></div></div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:5px">近 30 天等效跑量 ${es.endurance.eqKm} km</div>
+        </div>
+      </div>
+    </div>` : ''}
     ${volRows ? `<div class="card">
       <div class="prog-sec-title">本週訓練量 (kg)</div>
       ${volRows}
     </div>` : ''}
     <div class="card">
-      <div class="prog-sec-title">最近個人紀錄</div>
-      ${prRows}
+      <div class="prog-sec-title">個人最佳</div>
+      ${prHtml}
     </div>
     ${runs.length >= 2 ? `<div class="card">
-      <div class="prog-sec-title">🏃 跑步距離趨勢 (km)</div>
+      <div class="prog-sec-title">🏃 跑步趨勢 (km)</div>
       ${buildSvgLineChart(runs.map(w=>({value:w.distance,label:w.date.slice(5)})),{color:'#f59e0b'})}
+    </div>` : ''}
+    ${bikeRides.length >= 2 ? `<div class="card">
+      <div class="prog-sec-title">🚴 單車趨勢 (km)</div>
+      ${buildSvgLineChart(bikeRides.map(w=>({value:w.distance,label:w.date.slice(5)})),{color:'#8b5cf6'})}
     </div>` : ''}`;
+  if (typeof ANIM !== 'undefined') ANIM.animScoreBars();
 }
 
 // ── Day Detail ─────────────────────────────────────────────────────────────
