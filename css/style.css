@@ -4,6 +4,7 @@
    深色為唯一主題（不再跟隨系統），行動優先 max-width 480px。
    ══════════════════════════════════════════════════════════════════════ */
 :root {
+  --font-display: 'Barlow Condensed', -apple-system, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', sans-serif;
   /* 熱血強調 */
   --primary: #ff4d24;
   --primary-dark: #d63a17;
@@ -22,13 +23,15 @@
   --text-secondary: #98a0ac;
   --success: #2fd06f;
   --danger: #ff4d4d;
-  --shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   --radius: 16px;
   --nav-h: 68px;
   --header-h: 56px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', sans-serif;
@@ -97,7 +100,7 @@ a, button, [role="button"], input, select, textarea, label {
   position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%) translateY(8px);
   background: #f5f6f8; color: #0a0b0e; padding: 10px 20px; border-radius: 100px;
   font-size: 14px; font-weight: 700; opacity: 0; transition: opacity 0.25s, transform 0.25s;
-  pointer-events: none; z-index: 999; white-space: nowrap;
+  pointer-events: none; z-index: 500; white-space: nowrap;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -151,7 +154,7 @@ a, button, [role="button"], input, select, textarea, label {
 .hud-name { font-size: 20px; font-weight: 900; letter-spacing: 0.5px; }
 .hud-stage-title { font-size: 12px; font-weight: 800; color: var(--gold); letter-spacing: 1px; margin-top: 2px; }
 .hud-streak { text-align: right; flex-shrink: 0; }
-.hud-streak-num { font-size: 26px; font-weight: 900; color: var(--primary); line-height: 1; }
+.hud-streak-num { font-size: 26px; font-weight: 900; font-family: var(--font-display); color: var(--primary); line-height: 1; }
 .hud-streak-label { font-size: 10px; font-weight: 800; color: var(--text-secondary); letter-spacing: 1px; margin-top: 2px; }
 
 .hero-avatar { width: 216px; margin: 2px auto 0; filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.55)); }
@@ -165,8 +168,8 @@ a, button, [role="button"], input, select, textarea, label {
 .part-warn {
   position: absolute;
   background: #fff; color: #14161b;
-  font-size: 11px; font-weight: 900;
-  padding: 4px 9px; border-radius: 100px;
+  font-size: 12px; font-weight: 900;
+  padding: 7px 12px; border-radius: 100px;
   border: 2px solid #14161b;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
   white-space: nowrap; z-index: 5;
@@ -197,7 +200,7 @@ a, button, [role="button"], input, select, textarea, label {
 
 /* ── Home: today header ── */
 .today-header { text-align: center; padding: 8px 0 4px; }
-.today-date-num { font-size: 54px; font-weight: 900; color: var(--text); line-height: 1; }
+.today-date-num { font-size: 54px; font-weight: 900; font-family: var(--font-display); color: var(--text); line-height: 1; }
 .today-date-sub { font-size: 14px; color: var(--text-secondary); margin-top: 4px; font-weight: 600; }
 
 /* ── Stats bar ── */
@@ -206,7 +209,7 @@ a, button, [role="button"], input, select, textarea, label {
   margin: 14px 0 10px; gap: 0;
 }
 .stat-item { flex: 1; text-align: center; }
-.stat-num { font-size: 28px; font-weight: 900; color: var(--primary); line-height: 1.1; }
+.stat-num { font-size: 28px; font-weight: 900; font-family: var(--font-display); color: var(--primary); line-height: 1.1; }
 .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; font-weight: 600; }
 .stat-divider { width: 1px; height: 36px; background: var(--border); margin: 0 16px; }
 
@@ -467,7 +470,7 @@ a, button, [role="button"], input, select, textarea, label {
 
 .stats-pr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
 .stats-pr-card { background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; border: 1px solid var(--border); }
-.stats-pr-val { font-size: 24px; font-weight: 900; color: var(--primary); line-height: 1.1; }
+.stats-pr-val { font-size: 24px; font-weight: 900; font-family: var(--font-display); color: var(--primary); line-height: 1.1; }
 .stats-pr-unit { font-size: 14px; font-weight: 600; }
 .stats-pr-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; }
 .stats-pr-date { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
@@ -520,7 +523,7 @@ a, button, [role="button"], input, select, textarea, label {
 /* ── Timer bottom sheet ── */
 .ts-display { text-align: center; padding: 16px 0 12px; }
 .ts-done .ts-time { color: var(--success); }
-.ts-time { font-size: 56px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; letter-spacing: -1px; }
+.ts-time { font-size: 56px; font-weight: 900; font-family: var(--font-display); font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; letter-spacing: -1px; }
 .ts-bar-bg { height: 4px; background: var(--border); border-radius: 2px; margin: 10px 0 4px; }
 .ts-bar-fg { height: 100%; background: var(--hot-grad); border-radius: 2px; transition: width 0.9s linear; }
 .ts-presets { display: flex; gap: 6px; margin-bottom: 16px; }
@@ -639,7 +642,7 @@ input[type=number] { -moz-appearance: textfield; }
 
 .body-stats { display: flex; }
 .body-stat { flex: 1; text-align: center; }
-.body-stat-num { font-size: 22px; font-weight: 900; color: var(--primary); line-height: 1.2; }
+.body-stat-num { font-size: 22px; font-weight: 900; font-family: var(--font-display); color: var(--primary); line-height: 1.2; }
 .body-stat-label { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
 
 .stage-row { display: flex; align-items: center; gap: 10px; padding: 8px 2px; }
@@ -656,13 +659,13 @@ input[type=number] { -moz-appearance: textfield; }
   background: var(--card-hi); border: 1px solid var(--border);
   border-radius: 20px; padding: 28px 24px 22px;
   width: min(320px, 88vw); text-align: center; position: relative;
-  animation: levelup-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: levelup-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .levelup-burst { font-size: 40px; margin-bottom: 4px; }
 .levelup-title { font-size: 18px; font-weight: 800; color: var(--text-secondary); margin-top: 10px; }
-.levelup-lv { font-size: 44px; font-weight: 900; color: var(--primary); line-height: 1.15; }
+.levelup-lv { font-size: 44px; font-weight: 900; font-family: var(--font-display); color: var(--primary); line-height: 1.15; }
 .levelup-stage { font-size: 15px; font-weight: 800; margin-top: 6px; }
 @keyframes levelup-pop {
-  0% { transform: scale(0.6); opacity: 0; }
+  0% { transform: scale(0.85); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }

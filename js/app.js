@@ -426,7 +426,7 @@ function _updateTimerSheet() {
 
 // ── SVG Line Chart ──────────────────────────────────────────────────────────
 
-function buildSvgLineChart(series, { color = '#6366f1' } = {}) {
+function buildSvgLineChart(series, { color = '#ff4d24' } = {}) {
   const clean = series.filter(s => isFinite(s.value));
   if (clean.length < 2) return '<div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:12px 0">資料不足，至少需要 2 筆記錄</div>';
   series = clean;
@@ -590,7 +590,7 @@ function home(_, {title}) {
       .map(b => `<div class="part-warn${b.cls}" style="${PART_WARN_POS[b.p] || ''}" onclick="App.goTo('selectType',{date:'${today}'})">${b.txt}</div>`)
       .join('');
     heroStage = `
-    <div class="hero-stage" onclick="App.goTo('avatar',{})">
+    <div class="hero-stage" role="button" tabindex="0" aria-label="查看角色詳情" onclick="App.goTo('avatar',{})" onkeydown="if(event.key==='Enter')App.goTo('avatar',{})">
       <div class="hud">
         <div>
           <div class="hud-name-row">
@@ -604,7 +604,7 @@ function home(_, {title}) {
           <div class="hud-streak-label">🔥 連續天數</div>
         </div>
       </div>
-      <div class="hero-avatar" id="hero-avatar">${heroAvatarSvg(_av, li.level, es)}</div>
+      <div class="hero-avatar" id="hero-avatar" aria-hidden="true">${heroAvatarSvg(_av, li.level, es)}</div>
       ${bubbleHtml}
       <div class="hero-xp">
         <div class="hero-xp-row">
@@ -1389,7 +1389,7 @@ function showExerciseStats(name) {
     </div>
     <div style="margin-bottom:16px">
       <div class="stats-chart-title">📊 單次訓練量 (${u})</div>
-      ${buildSvgLineChart(volSeries, { color: '#10b981' })}
+      ${buildSvgLineChart(volSeries, { color: '#2fd06f' })}
     </div>` : '';
 
   const histSection = hist.length ? `
