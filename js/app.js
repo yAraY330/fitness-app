@@ -784,13 +784,13 @@ function progress(_, {title}) {
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 6);
 
-  // ── 有氧趨勢 ──
+  // ── 有氧趨勢（allWorkouts 是 newest-first，取前 10 再 reverse 為時序）──
   const runs = allWorkouts
     .filter(w => (w.type==='outdoor_run'||w.type==='indoor_run') && w.distance > 0)
-    .slice(-10);
+    .slice(0, 10).reverse();
   const bikeRides = allWorkouts
     .filter(w => w.type==='bike' && w.distance > 0)
-    .slice(-10);
+    .slice(0, 10).reverse();
 
   // ── 各部位 rows（含 mini bar + GSAP）──
   // ui-ux-pro-max color-semantic: PART_COLORS per body part；dotColor = 訓練新鮮度語義色
@@ -820,7 +820,7 @@ function progress(_, {title}) {
   }).join('');
 
   // ── 本週訓練量 bars（加 data-gsap="psr-bar" 觸發 GSAP）──
-  const maxVol = Math.max(1, ...Object.values(weekVol).length ? Object.values(weekVol) : [1]);
+  const maxVol = Math.max(1, ...Object.values(weekVol));
   const volRows = BODY_PARTS.filter(p => weekVol[p.id]).map(p => {
     const pct = Math.round((weekVol[p.id] / maxVol) * 100);
     const display = weekVol[p.id] >= 1000
@@ -938,7 +938,7 @@ function dayDetail({date}, {title, right}) {
         .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
     } else {
       const tChip = w.startTime && w.endTime ? `${w.startTime} ～ ${w.endTime}` : w.startTime || null;
-      body = [tChip&&`時段：<span>⏱ ${tChip}</span>`,w.distance&&`距離：<span>${w.distance} km</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`,w.notes&&`備註：<span>${w.notes}</span>`]
+      body = [tChip&&`時段：<span>⏱ ${tChip}</span>`,w.distance&&`距離：<span>${w.distance} km</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`,w.notes&&`備註：<span>${escHtml(w.notes)}</span>`]
         .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
     }
     return `<div class="card">
