@@ -1945,13 +1945,14 @@ function showLevelUp(level) {
   if (document.getElementById('levelup-modal')) return;
   lockScroll();
   const a = DB.getAvatar(), st = stageFor(level);
+  const es = engineState();
   const newStage = STAGES.some(s => s.min === level);
   const el = document.createElement('div');
   el.id = 'levelup-modal'; el.className = 'modal-overlay';
   el.innerHTML = `
     <div class="levelup-card">
       <div class="levelup-burst">🎉</div>
-      <div style="width:150px;margin:0 auto">${buildAvatarSvg(a, level)}</div>
+      <div style="width:150px;margin:0 auto">${heroAvatarSvg(a, level, es)}</div>
       <div class="levelup-title">升級！</div>
       <div class="levelup-lv">Lv.${level}</div>
       ${newStage ? `<div class="levelup-stage" style="color:${st.outfit}">🏅 晉升「${st.title}」！</div>` : ''}

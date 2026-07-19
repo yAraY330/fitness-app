@@ -266,8 +266,11 @@ function buildKinniku(opts) {
       Q ${RD(cx + DT + 22)} 200 ${RD(cx + DT - 6)} 92 Z"
       fill="#b91c1c" stroke="${OUT}" stroke-width="4" stroke-linejoin="round"/>` : '';
   const aura = si >= 5 ? `<circle cx="${cx}" cy="190" r="${RD(DT + 78)}" fill="#fbbf24" opacity="0.13"/>` : '';
-  const wind = endur >= 0.8 ? `<g stroke="#f59e0b" stroke-width="3" opacity="0.55" stroke-linecap="round" fill="none">
-      <path d="M ${RD(cx - DT - 34)} ${LY(FT - 8)} h 18 M ${RD(cx - DT - 24)} ${LY(FT + 2)} h 24 M ${RD(cx + DT + 16)} ${LY(FT - 8)} h 18 M ${RD(cx + DT)} ${LY(FT + 2)} h 24"/>
+  const wind = endur >= 0.8 ? `<g id="av-wind" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" fill="none">
+      <path d="M ${RD(cx - DT - 34)} ${LY(FT - 8)} h 18" opacity="0.55"/>
+      <path d="M ${RD(cx - DT - 24)} ${LY(FT + 2)} h 24" opacity="0.35"/>
+      <path d="M ${RD(cx + DT + 16)} ${LY(FT - 8)} h 18" opacity="0.55"/>
+      <path d="M ${RD(cx + DT)} ${LY(FT + 2)} h 24" opacity="0.35"/>
     </g>` : '';
 
   const restOverlay = resting ? `<g>

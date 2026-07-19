@@ -44,8 +44,9 @@ const ANIM = (() => {
     });
   }
 
-  // ── 首頁角色待機呼吸 ────────────────────────────────────────────────────
-  // gsap-timeline: repeat:-1 yoyo:true sine.inOut 給有機起伏感
+  // ── 首頁角色待機呼吸 + 耐力風動線條 ─────────────────────────────────────
+  // gsap-timeline: repeat:-1 yoyo:true sine.inOut
+  // gsap-core: wind paths stagger opacity — 只動 opacity，REDESIGN_PROMPT 1.5節 GSAP 動畫
   let _tl = null;
   function startBreathing() {
     if (!hasGsap() || rm) return;
@@ -54,8 +55,19 @@ const ANIM = (() => {
     stopBreathing();
     _tl = gsap.timeline({ repeat: -1, yoyo: true })
       .to(el, { y: -5, duration: 2.2, ease: 'sine.inOut' });
+    const windPaths = el.querySelectorAll('#av-wind path');
+    if (windPaths.length) {
+      gsap.to(windPaths, {
+        opacity: 0.1, duration: 0.55, repeat: -1, yoyo: true,
+        stagger: 0.14, ease: 'sine.inOut'
+      });
+    }
   }
-  function stopBreathing() { if (_tl) { _tl.kill(); _tl = null; } }
+  function stopBreathing() {
+    if (_tl) { _tl.kill(); _tl = null; }
+    const windPaths = document.querySelectorAll('#av-wind path');
+    if (windPaths.length) gsap.killTweensOf(windPaths);
+  }
 
   // ── 部位發光（訓練儲存後延遲到返回首頁時觸發）────────────────────────────
   // avatar.js 已為每個部位預置 <g id="glow-<part>"> 白色覆蓋形（mix-blend-mode:overlay）
