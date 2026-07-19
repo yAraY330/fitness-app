@@ -1,6 +1,6 @@
-const CACHE = 'fitness-v9';
+const CACHE = 'fitness-v10';
 const MEDIA_CACHE = 'fitness-media-v1';
-const ASSETS = ['./', './index.html', './css/style.css', './js/app.js',
+const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
   './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './manifest.json'];
 
 self.addEventListener('install', e => {

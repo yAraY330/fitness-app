@@ -278,6 +278,24 @@ const DB = {
     return hit;
   },
   getAvatar() { return this._load().avatar || null; },
+  // 體重時間序列；無紀錄時以 avatar 建檔體重補一筆（建檔日），維持純函數推導
+  getBodyWeights() {
+    const d = this._load();
+    if (Array.isArray(d.bodyWeights) && d.bodyWeights.length) return d.bodyWeights;
+    if (d.avatar) return [{ date: toLocalStr(new Date(d.avatar.createdAt || Date.now())), weight: d.avatar.weight }];
+    return [];
+  },
+  addBodyWeight(date, weight) {
+    const d = this._load();
+    if (!Array.isArray(d.bodyWeights)) d.bodyWeights = this.getBodyWeights();
+    d.bodyWeights = d.bodyWeights.filter(e => e.date !== date);
+    d.bodyWeights.push({ date, weight });
+    d.bodyWeights.sort((a, b) => a.date.localeCompare(b.date));
+    if (d.avatar) d.avatar.weight = weight;
+    this._save(d);
+  },
+  getRestPeriods() { const d = this._load(); return Array.isArray(d.restPeriods) ? d.restPeriods : []; },
+  setRestPeriods(ps) { const d = this._load(); d.restPeriods = ps; this._save(d); },
   saveAvatar(a) {
     const d = this._load();
     d.avatar = { ...(d.avatar || {}), ...a };
@@ -493,7 +511,47 @@ function _render(screen, params) {
     ?.(params, {title: document.getElementById('header-title'), right: document.getElementById('header-right')});
 }
 
+// ── Engine 狀態（部位分數/耐力/休養，全部由紀錄純函數推導）──────────────────
+
+function engineState() {
+  const a = DB.getAvatar();
+  const today = getTodayStr();
+  const workouts = DB._load().workouts;
+  const restPeriods = DB.getRestPeriods();
+  const bodyWeightKg = Engine.weightOn(DB.getBodyWeights(), today, a ? a.weight : 65);
+  const scores = Engine.computePartScores({ workouts, bodyWeightKg, today, restPeriods, exMap: window.EXERCISE_MAP, exIndex: EX_INDEX_BY_ID });
+  const endurance = Engine.computeEndurance({ workouts, bodyWeightKg, today, restPeriods });
+  return {
+    scores, endurance, bodyWeightKg,
+    resting: Engine.isInRest(today, restPeriods),
+    weightStaleDays: Engine.daysSinceWeightUpdate(DB.getBodyWeights(), today),
+  };
+}
+
+// 角色 SVG（新版生成器；畫風層可整組替換）
+function heroAvatarSvg(a, level, es) {
+  const scoreMap = {};
+  Object.keys(es.scores).forEach(p => { scoreMap[p] = es.scores[p].score; });
+  const dimParts = Object.keys(es.scores).filter(p => es.scores[p].decayDays > 0);
+  return buildKinniku({
+    gender: a.gender, height: a.height, weight: es.bodyWeightKg,
+    scores: scoreMap, endurance: es.endurance.score,
+    stageIndex: stageIndex(level), resting: es.resting, dimParts,
+  });
+}
+
 // ── Home ───────────────────────────────────────────────────────────────────
+
+// 衰退提示氣泡在舞台上的定位（近似對應角色部位）
+const PART_WARN_POS = {
+  shoulders: 'top:21%;right:5%',
+  chest:     'top:30%;left:6%',
+  back:      'top:40%;right:3%',
+  biceps:    'top:48%;left:3%',
+  triceps:   'top:56%;right:5%',
+  core:      'top:52%;left:7%',
+  legs:      'top:72%;left:50%;transform:translateX(-50%)',
+};
 
 function home(_, {title}) {
   title.textContent = '健身紀錄';
@@ -513,32 +571,57 @@ function home(_, {title}) {
   DB.all().filter(w => w.date !== today).forEach(w => { (byDate[w.date]=byDate[w.date]||[]).push(w); });
   const recentDates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,7);
 
+  // ── 角色舞台 ──
   const _av = DB.getAvatar();
-  let avCard = '';
+  let heroStage = '';
   if (_av) {
-    const li = levelInfo(DB.all().reduce((s,w)=>s+calcWorkoutXp(w),0));
+    const li = levelInfo(totalXp());
     const st = stageFor(li.level);
-    avCard = `<div class="card avatar-mini" onclick="App.goTo('avatar',{})">
-      <div class="avatar-mini-svg">${buildAvatarSvg(_av, li.level)}</div>
-      <div class="avatar-mini-info">
-        <div class="avatar-mini-name">${escHtml(_av.name)} <span class="avatar-lv-chip">Lv.${li.level}</span></div>
-        <div class="avatar-mini-stage" style="color:${st.outfit}">${st.title}</div>
-        <div class="xp-bar-bg"><div class="xp-bar-fg" style="width:${Math.round(li.cur/li.need*100)}%"></div></div>
-        <div class="avatar-mini-xp">${li.cur} / ${li.need} XP</div>
+    const es = engineState();
+    // 衰退提示：warning = 快衰退（該練了）；decayDays>0 = 衰退中（流失提示）
+    const bubbles = [];
+    Object.keys(es.scores).forEach(p => {
+      const s = es.scores[p];
+      if (es.resting) return;
+      if (s.warning) bubbles.push({ p, cls: '', txt: `該練${PART_LABEL_MAP[p] || p}了！` });
+      else if (s.decayDays > 0 && s.raw > 0) bubbles.push({ p, cls: ' warn-decay', txt: `${PART_LABEL_MAP[p] || p} -${s.decayDays}` });
+    });
+    const bubbleHtml = bubbles.slice(0, 3)
+      .map(b => `<div class="part-warn${b.cls}" style="${PART_WARN_POS[b.p] || ''}" onclick="App.goTo('selectType',{date:'${today}'})">${b.txt}</div>`)
+      .join('');
+    heroStage = `
+    <div class="hero-stage" onclick="App.goTo('avatar',{})">
+      <div class="hud">
+        <div>
+          <div class="hud-name-row">
+            <span class="hud-name">${escHtml(_av.name)}</span>
+            <span class="avatar-lv-chip">Lv.${li.level}</span>
+          </div>
+          <div class="hud-stage-title">${st.title}${es.resting ? '　<span class="rest-mode-chip">🛌 休養中</span>' : ''}</div>
+        </div>
+        <div class="hud-streak">
+          <div class="hud-streak-num">${streak || 0}</div>
+          <div class="hud-streak-label">🔥 連續天數</div>
+        </div>
       </div>
-      <span class="row-arrow">›</span>
-    </div>`;
+      <div class="hero-avatar" id="hero-avatar">${heroAvatarSvg(_av, li.level, es)}</div>
+      ${bubbleHtml}
+      <div class="hero-xp">
+        <div class="hero-xp-row">
+          <span class="hero-xp-label">XP</span>
+          <span class="hero-xp-val">${li.cur} / ${li.need}</span>
+        </div>
+        <div class="xp-bar-bg"><div class="xp-bar-fg" style="width:${Math.round(li.cur / li.need * 100)}%"></div></div>
+      </div>
+    </div>
+    <button class="start-btn" onclick="event.stopPropagation();App.goTo('selectType',{date:'${today}'})">開始訓練</button>`;
   }
 
   document.getElementById('content').innerHTML = `
-    ${avCard}
+    ${heroStage}
     <div class="card" style="padding:14px">
-      <div class="today-header">
-        <div class="today-date-num">${d.getDate()}</div>
-        <div class="today-date-sub">${d.getFullYear()}年${d.getMonth()+1}月　週${dayNames[d.getDay()]}</div>
-      </div>
-      <div class="stats-bar">
-        <div class="stat-item"><div class="stat-num">${streak||'—'}</div><div class="stat-label">🔥 連續天數</div></div>
+      <div class="stats-bar" style="margin-top:2px">
+        <div class="stat-item"><div class="stat-num">${d.getDate()}</div><div class="stat-label">${d.getMonth()+1}月　週${dayNames[d.getDay()]}</div></div>
         <div class="stat-divider"></div>
         <div class="stat-item"><div class="stat-num">${weekCount||'—'}</div><div class="stat-label">⚡ 本週天數</div></div>
       </div>
@@ -554,11 +637,10 @@ function home(_, {title}) {
       </div>
       <div style="margin-top:12px">
         ${todayWs.length===0
-          ? `<div class="empty-state" style="padding:16px 0 4px"><div class="empty-icon">🏃</div><p>今天還沒有訓練紀錄</p></div>`
+          ? `<div class="empty-state" style="padding:12px 0 4px"><div class="empty-icon">🏃</div><p>今天還沒有訓練紀錄</p></div>`
           : todayWs.map(workoutRow).join('')}
       </div>
     </div>
-    <button class="btn btn-primary" onclick="App.goTo('selectType',{date:'${today}'})">＋ 新增今日訓練</button>
     ${recentDates.length ? `
       <div class="section-title" style="margin-top:4px">最近紀錄</div>
       ${recentDates.map(date => `
