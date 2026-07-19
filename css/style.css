@@ -679,37 +679,20 @@ input[type=number] { -moz-appearance: textfield; }
   font-size: 13px; color: var(--text-secondary); font-weight: 600;
   margin-bottom: 16px; padding-left: 2px;
 }
-.type-hero-card {
-  display: flex; align-items: center; gap: 16px;
+.type-all-list { display: flex; flex-direction: column; gap: 10px; }
+.type-all-card {
+  display: flex; align-items: center; gap: 18px;
   width: 100%; background: var(--hot-grad); color: #fff;
-  border: none; border-radius: 20px; padding: 22px 20px;
+  border: none; border-radius: 20px; padding: 20px 20px;
   cursor: pointer; text-align: left; font-family: inherit;
-  box-shadow: 0 8px 28px rgba(255, 60, 20, 0.38);
+  box-shadow: 0 6px 22px rgba(255, 60, 20, 0.35);
   transition: transform 0.12s, opacity 0.15s;
-  margin-bottom: 16px;
 }
-.type-hero-card:active { transform: scale(0.97); opacity: 0.9; }
-.t-hero-icon-wrap { font-size: 44px; line-height: 1; flex-shrink: 0; }
-.t-hero-text { flex: 1; }
-.t-hero-label { font-size: 22px; font-weight: 900; letter-spacing: 1px; font-family: var(--font-display); line-height: 1.1; }
-.t-hero-sub { font-size: 13px; font-weight: 600; opacity: 0.82; margin-top: 4px; letter-spacing: 0.5px; }
-.t-hero-arrow { font-size: 28px; font-weight: 300; opacity: 0.7; flex-shrink: 0; }
-
-.type-sec-label {
-  font-size: 11px; font-weight: 900; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding-left: 2px;
-}
-.type-cardio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.type-cardio-card {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--card); border: 2px solid var(--border);
-  border-radius: var(--radius); padding: 16px 14px;
-  cursor: pointer; font-family: inherit;
-  transition: border-color 0.15s, background 0.15s;
-}
-.type-cardio-card:active { border-color: var(--primary); background: var(--primary-light); }
-.tc-icon { font-size: 28px; line-height: 1; }
-.tc-label { font-size: 15px; font-weight: 800; color: var(--text); }
+.type-all-card:active { transform: scale(0.97); opacity: 0.9; }
+.t-all-icon { font-size: 40px; line-height: 1; flex-shrink: 0; }
+.t-all-text { flex: 1; }
+.t-all-label { font-size: 20px; font-weight: 900; letter-spacing: 1px; font-family: var(--font-display); line-height: 1.1; }
+.t-all-arrow { font-size: 26px; font-weight: 300; opacity: 0.7; flex-shrink: 0; }
 
 /* ── 選擇訓練部位（加分數條） ── */
 .part-btn {

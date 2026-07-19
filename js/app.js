@@ -932,20 +932,14 @@ function selectType({date}, {title}) {
   window.currentExercises = []; window._editId = null;
   document.getElementById('content').innerHTML = `
     <div class="type-date-label">${formatDate(date)}</div>
-    <button class="type-hero-card" data-gsap="type-card" onclick="pickType('weight','${date}')">
-      <div class="t-hero-icon-wrap" aria-hidden="true">🏋️</div>
-      <div class="t-hero-text">
-        <div class="t-hero-label">重量訓練</div>
-        <div class="t-hero-sub">增肌 · 力量 · 體型塑造</div>
-      </div>
-      <span class="t-hero-arrow" aria-hidden="true">›</span>
-    </button>
-    <div class="type-sec-label">有氧運動</div>
-    <div class="type-cardio-grid">
-      ${WORKOUT_TYPES.filter(t => t.id !== 'weight').map(t => `
-        <button class="type-cardio-card" data-gsap="type-card" onclick="pickType('${t.id}','${date}')">
-          <span class="tc-icon" aria-hidden="true">${t.icon}</span>
-          <span class="tc-label">${t.label}</span>
+    <div class="type-all-list">
+      ${WORKOUT_TYPES.map(t => `
+        <button class="type-all-card" data-gsap="type-card" onclick="pickType('${t.id}','${date}')">
+          <span class="t-all-icon" aria-hidden="true">${t.icon}</span>
+          <div class="t-all-text">
+            <div class="t-all-label">${t.label}</div>
+          </div>
+          <span class="t-all-arrow" aria-hidden="true">›</span>
         </button>`).join('')}
     </div>`;
 }
