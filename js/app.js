@@ -715,6 +715,9 @@ function _renderCalendar() {
     return `<div class="hcal-cell${c.ds===today?' hcal-today':''}${c.ws.length?' hcal-has':''}" onclick="App.goTo('dayDetail',{date:'${c.ds}'})"><div class="hcal-num">${c.d}</div><div class="hcal-dots">${dots}</div></div>`;
   };
   const monthWs=Object.entries(byDate).filter(([d])=>d.startsWith(monthStr)).flatMap(([,ws])=>ws);
+  const monthDayCount = Object.keys(byDate).filter(d=>d.startsWith(monthStr)).length;
+  const monthWeightCount = monthWs.filter(w=>w.type==='weight').length;
+  const monthCardioCount = monthWs.filter(w=>w.type!=='weight').length;
   const counts={}; monthWs.forEach(w=>{const k=w.type==='weight'?w.bodyPart:w.type;counts[k]=(counts[k]||0)+1;});
   const legend=Object.keys(counts).length
     ?`<div class="hcal-legend">${Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<div class="hcal-legend-item"><span class="hcal-legend-dot" style="background:${PART_COLORS[k]||TYPE_COLORS[k]||'#6366f1'}"></span><span>${PART_LABEL_MAP[k]||TYPE_LABEL_MAP[k]||k}</span><span class="hcal-legend-count">${n}</span></div>`).join('')}</div>`
@@ -724,6 +727,13 @@ function _renderCalendar() {
       <button class="hcal-nav-btn" onclick="_calPrev()">‹</button>
       <span class="hcal-nav-title">${y} 年 ${m+1} 月</span>
       <button class="hcal-nav-btn" onclick="_calNext()">›</button>
+    </div>
+    <div class="hcal-month-stats">
+      <div class="hcal-ms-item"><span class="hcal-ms-num">${monthDayCount}</span><span class="hcal-ms-label">訓練天</span></div>
+      <div class="hcal-ms-divider"></div>
+      <div class="hcal-ms-item"><span class="hcal-ms-num">${monthWeightCount}</span><span class="hcal-ms-label">重量</span></div>
+      <div class="hcal-ms-divider"></div>
+      <div class="hcal-ms-item"><span class="hcal-ms-num">${monthCardioCount}</span><span class="hcal-ms-label">有氧</span></div>
     </div>
     <div class="hcal-wrap">
       <div class="hcal-head">${['一','二','三','四','五','六','日'].map(l=>`<div class="hcal-head-cell">${l}</div>`).join('')}</div>
@@ -736,6 +746,7 @@ function _renderCalendar() {
 
 function progress(_, {title}) {
   title.textContent = '訓練進度';
+  const es = engineState();
 
   // 各部位上次訓練
   const partStatus = BODY_PARTS.map(p => {
@@ -769,7 +780,10 @@ function progress(_, {title}) {
   // ── 渲染各部位狀態 ──
   const partHtml = partStatus.map(p => {
     const d = p.daysAgo;
-    const dotColor = d===null ? 'var(--border)' : d===0 ? '#10b981' : d<=3 ? 'var(--primary)' : d<=7 ? '#f59e0b' : '#ef4444';
+    const s = es.scores[p.id] || {};
+    const score = Math.round(s.score || 0);
+    const sc = _scoreColor(score);
+    const dotColor = d===null ? 'var(--border)' : d===0 ? 'var(--success)' : d<=3 ? 'var(--primary)' : d<=7 ? 'var(--gold)' : 'var(--danger)';
     const ago = d===null ? '尚未訓練' : d===0 ? '今天' : d===1 ? '昨天' : `${d} 天前`;
     const dest = p.lastDate
       ? `App.goTo('dayDetail',{date:'${p.lastDate}'})`
@@ -777,6 +791,7 @@ function progress(_, {title}) {
     return `<div class="prog-part-row" onclick="${dest}">
       <span class="prog-part-dot" style="background:${dotColor}"></span>
       <span class="prog-part-name">${p.label}</span>
+      <span class="prog-part-score-inline" style="color:${sc}">${score || '—'}</span>
       <span class="prog-part-ago">${ago}</span>
       <span class="row-arrow">›</span>
     </div>`;
@@ -916,13 +931,22 @@ function selectType({date}, {title}) {
   title.textContent = '選擇訓練類型';
   window.currentExercises = []; window._editId = null;
   document.getElementById('content').innerHTML = `
-    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">${formatDate(date)}</div>
-    <div class="type-grid">
-      ${WORKOUT_TYPES.map(t=>`
-        <div class="type-card" onclick="pickType('${t.id}','${date}')">
-          <div class="t-icon">${t.icon}</div>
-          <div class="t-label">${t.label}</div>
-        </div>`).join('')}
+    <div class="type-date-label">${formatDate(date)}</div>
+    <button class="type-hero-card" data-gsap="type-card" onclick="pickType('weight','${date}')">
+      <div class="t-hero-icon-wrap" aria-hidden="true">🏋️</div>
+      <div class="t-hero-text">
+        <div class="t-hero-label">重量訓練</div>
+        <div class="t-hero-sub">增肌 · 力量 · 體型塑造</div>
+      </div>
+      <span class="t-hero-arrow" aria-hidden="true">›</span>
+    </button>
+    <div class="type-sec-label">有氧運動</div>
+    <div class="type-cardio-grid">
+      ${WORKOUT_TYPES.filter(t => t.id !== 'weight').map(t => `
+        <button class="type-cardio-card" data-gsap="type-card" onclick="pickType('${t.id}','${date}')">
+          <span class="tc-icon" aria-hidden="true">${t.icon}</span>
+          <span class="tc-label">${t.label}</span>
+        </button>`).join('')}
     </div>`;
 }
 function pickType(typeId, date) {
@@ -930,18 +954,44 @@ function pickType(typeId, date) {
   else App.goTo('addCardio',{date,typeId});
 }
 
+// ── Score color helper ─────────────────────────────────────────────────────
+
+function _scoreColor(score) {
+  if (score >= 70) return 'var(--success)';
+  if (score >= 40) return 'var(--primary)';
+  if (score > 0)   return 'var(--gold)';
+  return 'var(--text-secondary)';
+}
+
 // ── Select Body Part ───────────────────────────────────────────────────────
 
 function selectBodyPart({date}, {title}) {
   title.textContent = '選擇訓練部位';
+  const es = engineState();
   document.getElementById('content').innerHTML = `
     <div class="part-grid">
       ${BODY_PARTS.map(p => {
+        const s = es.scores[p.id] || {};
+        const score = Math.round(s.score || 0);
         const last = DB.lastForPart(p.id);
-        return `<div class="part-btn" onclick="pickPart('${p.id}','${date}')">
-          <div class="part-label">${p.label}</div>
-          <div class="part-last">${last ? `上次 ${daysAgo(last.date)}` : '尚無紀錄'}</div>
-        </div>`;
+        const sc = _scoreColor(score);
+        const decay = s.decayDays > 0 && s.raw > 0
+          ? `<span class="psel-badge psel-decay">-${s.decayDays}</span>` : '';
+        const warn = s.warning
+          ? `<span class="psel-badge psel-warn">該練了</span>` : '';
+        return `<button class="part-btn" data-gsap="part-btn" onclick="pickPart('${p.id}','${date}')">
+          <div class="part-btn-top">
+            <div class="part-label">${p.label}</div>
+            <div class="part-score-num" style="color:${sc}">${score || '—'}</div>
+          </div>
+          <div class="part-score-bar-bg">
+            <div class="part-score-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${sc}"></div>
+          </div>
+          <div class="part-btn-bottom">
+            <div class="part-last">${last ? `上次 ${daysAgo(last.date)}` : '尚無紀錄'}</div>
+            ${decay}${warn}
+          </div>
+        </button>`;
       }).join('')}
     </div>`;
 }
@@ -1711,6 +1761,45 @@ function _obSave() {
   _render('avatar', {});
 }
 
+// ── Avatar screen helpers ──────────────────────────────────────────────────
+
+function _fmtVol(all) {
+  const v = (all || []).filter(w => w.type === 'weight')
+    .reduce((s, w) => s + (w.exercises || []).reduce((s2, ex) =>
+      (ex.sets || []).reduce((s3, set) => s3 + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), s2), 0), 0);
+  return v >= 1000 ? (v / 1000).toFixed(1) + 't' : Math.round(v);
+}
+
+function _showWeightUpdate() {
+  const p = document.getElementById('weight-input-panel');
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function _saveWeightUpdate() {
+  const val = parseFloat(document.getElementById('new-weight-val')?.value);
+  if (!(val >= 25 && val <= 300)) { showToast('請輸入正確體重（25–300 kg）'); return; }
+  DB.addBodyWeight(getTodayStr(), val);
+  showToast(`體重已更新：${val} kg ✓`);
+  avatarScreen({}, { title: document.getElementById('header-title'), right: document.getElementById('header-right') });
+}
+
+function _startRest() {
+  const ps = DB.getRestPeriods();
+  ps.push({ start: getTodayStr() });
+  DB.setRestPeriods(ps);
+  showToast('休養模式已開始 🛌');
+  avatarScreen({}, { title: document.getElementById('header-title'), right: document.getElementById('header-right') });
+}
+
+function _endRest() {
+  const today = getTodayStr();
+  const ps = DB.getRestPeriods().map(r =>
+    Engine.isInRest(today, [r]) ? { ...r, end: today } : r);
+  DB.setRestPeriods(ps);
+  showToast('休養模式已結束 💪');
+  avatarScreen({}, { title: document.getElementById('header-title'), right: document.getElementById('header-right') });
+}
+
 // ── Avatar Screen（角色頁）─────────────────────────────────────────────────
 
 function avatarScreen(_, {title, right}) {
@@ -1718,14 +1807,48 @@ function avatarScreen(_, {title, right}) {
   right.innerHTML = `<button class="edit-btn" onclick="App.goTo('onboarding',{})">編輯</button>`;
   const a = DB.getAvatar();
   const xp = totalXp(), li = levelInfo(xp), st = stageFor(li.level), nx = nextStage(li.level);
-  const bmi = a.weight / Math.pow(a.height / 100, 2);
-  const all = DB.all();
-  const totalVol = all.filter(w=>w.type==='weight').reduce((s,w)=>s+(w.exercises||[]).reduce((s2,ex)=>(ex.sets||[]).reduce((s3,set)=>s3+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),s2),0),0);
+  const es = engineState();
   const pct = Math.round(li.cur / li.need * 100);
+  const all = DB.all();
+
+  // 部位分數列
+  const partScoreHtml = BODY_PARTS.map(p => {
+    const s = es.scores[p.id] || {};
+    const score = Math.round(s.score || 0);
+    const sc = _scoreColor(score);
+    const decay = s.decayDays > 0 && s.raw > 0
+      ? `<span class="psr-badge psr-decay">-${s.decayDays}</span>` : '';
+    const warn = s.warning
+      ? `<span class="psr-badge psr-warn">!</span>` : '';
+    return `<div class="psr-row">
+      <div class="psr-name">${p.label}</div>
+      <div class="psr-bar-bg"><div class="psr-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${sc}"></div></div>
+      <div class="psr-right">
+        <span class="psr-score" style="color:${sc}">${score}</span>
+        ${decay}${warn}
+      </div>
+    </div>`;
+  }).join('');
+
+  // 耐力
+  const endScore = es.endurance.score;
+  const endKm = es.endurance.eqKm;
+  const endSc = _scoreColor(endScore);
+
+  // 體重
+  const staleDays = es.weightStaleDays;
+  const weightWarn = staleDays !== null && staleDays > 21;
+  const staleLabel = staleDays === null ? '尚未記錄'
+    : staleDays === 0 ? '今天' : `${staleDays} 天前`;
+  const bmi = (es.bodyWeightKg / Math.pow(a.height / 100, 2)).toFixed(1);
+
+  // 休養
+  const resting = es.resting;
+  const curRest = DB.getRestPeriods().find(r => Engine.isInRest(getTodayStr(), [r]));
 
   const roadmap = STAGES.map(s => {
     const unlocked = li.level >= s.min, current = s === st;
-    return `<div class="stage-row${current?' stage-current':''}${unlocked?'':' stage-locked'}">
+    return `<div class="stage-row${current ? ' stage-current' : ''}${unlocked ? '' : ' stage-locked'}">
       <span class="stage-dot" style="background:${unlocked ? s.outfit : 'var(--border)'}"></span>
       <span class="stage-name">${s.title}</span>
       <span class="stage-lv">${unlocked ? (current ? '目前階段' : '已達成 ✓') : `Lv.${s.min} 解鎖`}</span>
@@ -1733,46 +1856,84 @@ function avatarScreen(_, {title, right}) {
   }).join('');
 
   document.getElementById('content').innerHTML = `
-    <div class="card" style="text-align:center;padding-top:20px">
-      <div style="width:180px;margin:0 auto">${buildAvatarSvg(a, li.level)}</div>
+    <div class="card" style="text-align:center;padding:20px 16px 14px">
+      <div class="av-svg-wrap" id="av-screen-svg" aria-hidden="true">${heroAvatarSvg(a, li.level, es)}</div>
       <div class="avatar-name-row">
         <span class="avatar-name">${escHtml(a.name)}</span>
         <span class="avatar-lv-chip">Lv.${li.level}</span>
       </div>
-      <div class="avatar-stage-title" style="color:${st.outfit}">${st.title}</div>
+      <div class="avatar-stage-title" style="color:${st.outfit}">${st.title}${resting ? '　<span class="rest-mode-chip">🛌 休養中</span>' : ''}</div>
       <div class="xp-bar-bg" style="margin:14px 12px 6px"><div class="xp-bar-fg" style="width:${pct}%"></div></div>
-      <div class="avatar-xp-text">${li.cur} / ${li.need} XP　<span style="color:var(--text-secondary)">距離 Lv.${li.level+1} 還差 ${li.need - li.cur} XP</span></div>
+      <div class="avatar-xp-text">${li.cur} / ${li.need} XP　<span style="color:var(--text-secondary)">距 Lv.${li.level + 1} 還差 ${li.need - li.cur}</span></div>
       ${nx ? `<div class="avatar-next-hint">下一階段：<b>${nx.title}</b>（Lv.${nx.min}）</div>` : `<div class="avatar-next-hint">已達最高階段 👑</div>`}
     </div>
+
     <div class="card">
-      <div class="prog-sec-title">身體資料</div>
-      <div class="body-stats">
-        <div class="body-stat"><div class="body-stat-num">${a.height}</div><div class="body-stat-label">身高 cm</div></div>
-        <div class="body-stat"><div class="body-stat-num">${a.weight}</div><div class="body-stat-label">體重 kg</div></div>
-        <div class="body-stat"><div class="body-stat-num">${bmi.toFixed(1)}</div><div class="body-stat-label">BMI</div></div>
+      <div class="prog-sec-title">部位力量</div>
+      ${partScoreHtml}
+      <div class="psr-hint">分數由訓練紀錄純函數推導，7 天未練起衰退</div>
+    </div>
+
+    <div class="card">
+      <div class="prog-sec-title">耐力</div>
+      <div class="endurance-row">
+        <div class="endurance-stat">
+          <div class="body-stat-num" style="color:${endSc}">${endScore}</div>
+          <div class="body-stat-label">耐力分數</div>
+        </div>
+        <div class="endurance-stat">
+          <div class="body-stat-num">${endKm}</div>
+          <div class="body-stat-label">30日等效 km</div>
+        </div>
       </div>
     </div>
+
+    <div class="card">
+      <div class="prog-sec-title">身體資料</div>
+      <div class="body-stats" style="margin-bottom:14px">
+        <div class="body-stat"><div class="body-stat-num">${a.height}</div><div class="body-stat-label">身高 cm</div></div>
+        <div class="body-stat"><div class="body-stat-num">${es.bodyWeightKg}</div><div class="body-stat-label">體重 kg</div></div>
+        <div class="body-stat"><div class="body-stat-num">${bmi}</div><div class="body-stat-label">BMI</div></div>
+      </div>
+      <div class="weight-update-row${weightWarn ? ' weight-update-warn' : ''}">
+        <span class="wur-label">體重更新：${staleLabel}${weightWarn ? '　⚠' : ''}</span>
+        <button class="wur-btn" onclick="_showWeightUpdate()">更新體重</button>
+      </div>
+      <div id="weight-input-panel" style="display:none;margin-top:10px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="new-weight-val" class="form-input" style="flex:1;margin:0" inputmode="decimal" step="0.1" placeholder="${es.bodyWeightKg}" aria-label="新體重（kg）">
+          <button class="btn btn-primary btn-sm" onclick="_saveWeightUpdate()">儲存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="prog-sec-title">休養模式</div>
+      <div class="rest-toggle-row">
+        <div class="rest-toggle-info">
+          ${resting
+            ? `<div class="rest-active-label">🛌 休養中${curRest ? `（${curRest.start} 起）` : ''}</div>`
+            : `<div class="rest-inactive-label">正常訓練中</div>`}
+        </div>
+        ${resting
+          ? `<button class="rest-toggle-btn rest-end-btn" onclick="_endRest()">結束休養</button>`
+          : `<button class="rest-toggle-btn rest-start-btn" onclick="_startRest()">開始休養</button>`}
+      </div>
+      <div class="rest-mode-desc">休養期間的衰退計算與 XP 暫停，適合受傷或長假期間。</div>
+    </div>
+
     <div class="card">
       <div class="prog-sec-title">累計成就</div>
       <div class="body-stats">
         <div class="body-stat"><div class="body-stat-num">${all.length}</div><div class="body-stat-label">訓練次數</div></div>
-        <div class="body-stat"><div class="body-stat-num">${xp.toLocaleString()}</div><div class="body-stat-label">總經驗值</div></div>
-        <div class="body-stat"><div class="body-stat-num">${totalVol>=1000?(totalVol/1000).toFixed(1)+'t':Math.round(totalVol)}</div><div class="body-stat-label">總訓練量</div></div>
+        <div class="body-stat"><div class="body-stat-num">${xp.toLocaleString()}</div><div class="body-stat-label">總 XP</div></div>
+        <div class="body-stat"><div class="body-stat-num">${_fmtVol(all)}</div><div class="body-stat-label">總訓練量</div></div>
       </div>
     </div>
+
     <div class="card">
       <div class="prog-sec-title">成長階段</div>
       ${roadmap}
-    </div>
-    <div class="card" style="padding:12px 16px">
-      <div class="prog-sec-title" style="margin-bottom:8px">經驗值怎麼算？</div>
-      <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.8">
-        每次訓練基礎 20 XP<br>
-        🏋️ 重訓：每 100 kg 訓練量 +1，每組 +2<br>
-        🏃 跑步：每 1 km +10，每 2 分鐘 +1<br>
-        🚴 單車：每 1 km +5，每 2 分鐘 +1<br>
-        🏊 游泳：每 50 m +1，每 2 分鐘 +1
-      </div>
     </div>`;
 }
 

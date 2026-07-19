@@ -669,3 +669,132 @@ input[type=number] { -moz-appearance: textfield; }
   0% { transform: scale(0.85); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Stage 4：訓練流程 / 角色頁 / 日曆 新增類別
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── 選擇訓練類型 ── */
+.type-date-label {
+  font-size: 13px; color: var(--text-secondary); font-weight: 600;
+  margin-bottom: 16px; padding-left: 2px;
+}
+.type-hero-card {
+  display: flex; align-items: center; gap: 16px;
+  width: 100%; background: var(--hot-grad); color: #fff;
+  border: none; border-radius: 20px; padding: 22px 20px;
+  cursor: pointer; text-align: left; font-family: inherit;
+  box-shadow: 0 8px 28px rgba(255, 60, 20, 0.38);
+  transition: transform 0.12s, opacity 0.15s;
+  margin-bottom: 16px;
+}
+.type-hero-card:active { transform: scale(0.97); opacity: 0.9; }
+.t-hero-icon-wrap { font-size: 44px; line-height: 1; flex-shrink: 0; }
+.t-hero-text { flex: 1; }
+.t-hero-label { font-size: 22px; font-weight: 900; letter-spacing: 1px; font-family: var(--font-display); line-height: 1.1; }
+.t-hero-sub { font-size: 13px; font-weight: 600; opacity: 0.82; margin-top: 4px; letter-spacing: 0.5px; }
+.t-hero-arrow { font-size: 28px; font-weight: 300; opacity: 0.7; flex-shrink: 0; }
+
+.type-sec-label {
+  font-size: 11px; font-weight: 900; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding-left: 2px;
+}
+.type-cardio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.type-cardio-card {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 2px solid var(--border);
+  border-radius: var(--radius); padding: 16px 14px;
+  cursor: pointer; font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.type-cardio-card:active { border-color: var(--primary); background: var(--primary-light); }
+.tc-icon { font-size: 28px; line-height: 1; }
+.tc-label { font-size: 15px; font-weight: 800; color: var(--text); }
+
+/* ── 選擇訓練部位（加分數條） ── */
+.part-btn {
+  display: block; width: 100%; text-align: left;
+  background: var(--card); border: 2px solid var(--border);
+  border-radius: 14px; padding: 14px 12px;
+  cursor: pointer; font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.part-btn:active, .part-btn:focus-visible { border-color: var(--primary); background: var(--primary-light); }
+.part-btn-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.part-score-num { font-size: 18px; font-weight: 900; font-family: var(--font-display); line-height: 1; }
+.part-score-bar-bg { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+.part-score-bar-fg { height: 100%; border-radius: 3px; transition: width 0.4s ease; min-width: 0; }
+.part-btn-bottom { display: flex; align-items: center; gap: 6px; }
+.psel-badge { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; line-height: 1.4; }
+.psel-decay { background: rgba(255,176,32,0.2); color: var(--gold); }
+.psel-warn  { background: rgba(255,255,255,0.1); color: #fff; }
+
+/* ── 角色頁：部位分數列 ── */
+.av-svg-wrap { width: 200px; margin: 0 auto; filter: drop-shadow(0 12px 20px rgba(0,0,0,0.5)); }
+
+.psr-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.psr-row:last-child { border-bottom: none; }
+.psr-name { width: 56px; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.psr-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.psr-bar-fg { height: 100%; border-radius: 3px; min-width: 0; transition: width 0.5s cubic-bezier(0.22,1,0.36,1); }
+.psr-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; width: 58px; justify-content: flex-end; }
+.psr-score { font-size: 15px; font-weight: 900; font-family: var(--font-display); }
+.psr-badge { font-size: 10px; font-weight: 800; padding: 2px 5px; border-radius: 4px; }
+.psr-decay { background: rgba(255,176,32,0.18); color: var(--gold); }
+.psr-warn  { background: var(--primary-light); color: var(--primary); }
+.psr-hint { font-size: 11px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; }
+
+/* ── 耐力卡 ── */
+.endurance-row { display: flex; gap: 16px; }
+.endurance-stat { flex: 1; text-align: center; }
+
+/* ── 體重更新列 ── */
+.weight-update-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px;
+}
+.weight-update-warn { border-color: var(--gold); background: rgba(255,176,32,0.07); }
+.wur-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.wur-btn {
+  background: var(--primary-light); border: 1px solid var(--primary);
+  color: var(--primary); border-radius: 8px; padding: 6px 14px;
+  font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap;
+}
+.wur-btn:active { background: var(--primary); color: #fff; }
+
+/* ── 休養模式切換 ── */
+.rest-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.rest-toggle-info { flex: 1; }
+.rest-active-label { font-size: 15px; font-weight: 800; color: #7dd3fc; }
+.rest-inactive-label { font-size: 14px; font-weight: 700; color: var(--text-secondary); }
+.rest-toggle-btn {
+  border: none; border-radius: 10px; padding: 9px 16px;
+  font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit;
+  white-space: nowrap; transition: opacity 0.15s;
+}
+.rest-toggle-btn:active { opacity: 0.8; }
+.rest-start-btn { background: rgba(56,189,248,0.15); color: #7dd3fc; border: 1px solid rgba(56,189,248,0.35); }
+.rest-end-btn   { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); }
+.rest-mode-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ── 進度頁：部位分數行內顯示 ── */
+.prog-part-score-inline { font-size: 13px; font-weight: 900; font-family: var(--font-display); flex-shrink: 0; margin-right: 2px; }
+
+/* ── 日曆月統計 ── */
+.hcal-month-stats {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px 16px; margin-bottom: 10px;
+  gap: 0;
+}
+.hcal-ms-item { flex: 1; text-align: center; }
+.hcal-ms-num { display: block; font-size: 22px; font-weight: 900; font-family: var(--font-display); color: var(--primary); line-height: 1.1; }
+.hcal-ms-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; margin-top: 2px; }
+.hcal-ms-divider { width: 1px; height: 32px; background: var(--border); margin: 0 8px; flex-shrink: 0; }
