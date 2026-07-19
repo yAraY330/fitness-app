@@ -662,7 +662,8 @@ function home(_, {title}) {
     <div class="data-mgmt">
       <button class="data-btn" onclick="exportData()">📤 匯出備份</button>
       <button class="data-btn" onclick="importData()">📥 匯入資料</button>
-    </div>`;
+    </div>
+    <p class="gym-credit">示範動作 © <a href="https://gymvisual.com/" target="_blank" rel="noopener noreferrer">Gym Visual</a></p>`;
 }
 
 function workoutRow(w) {
@@ -1214,13 +1215,24 @@ function closePicker() {
   });
 }
 
+// 取得動作對應的英文名（來自 exercises-dataset）
+function _exEngName(zhName) {
+  const m = _mapEntry(zhName);
+  if (!m || !m.l) return '';
+  const ex = EX_INDEX_BY_ID[m.l];
+  return ex ? ex.name : '';
+}
+
 function _buildPickerList(q) {
   const added = new Set((window.currentExercises||[]).map(e=>e.name));
   const last = DB.lastForPart(_pp);
   const recentNames = last ? last.exercises.map(e=>e.name) : [];
   const all = [...new Set([...recentNames,...(PRESET_EXERCISES[_pp]||[]),...DB.customEx(_pp)])];
   const qLow = q.trim().toLowerCase();
-  const filtered = qLow ? all.filter(n=>n.toLowerCase().includes(qLow)) : all;
+  // 同時搜尋中文名與英文原名（REDESIGN_PROMPT：附英文原名搜尋）
+  const filtered = qLow
+    ? all.filter(n => n.toLowerCase().includes(qLow) || _exEngName(n).toLowerCase().includes(qLow))
+    : all;
   if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:14px">找不到「${q}」</div>`;
 
   const recentFiltered = !qLow ? recentNames.filter(n=>filtered.includes(n)) : [];
@@ -1230,6 +1242,7 @@ function _buildPickerList(q) {
     const isAdded = added.has(name), isRecent = !qLow && recentNames.includes(name);
     const esc = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     const thumbs = getThumbSources(name);
+    const engName = _exEngName(name);
 
     const thumbHtml = thumbs.length
       ? `<img class="ex-thumb" src="${thumbs[0]}" data-next="${thumbs.slice(1).join('|')}" loading="lazy" alt=""
@@ -1245,6 +1258,7 @@ function _buildPickerList(q) {
         <div class="picker-ex-meta">
           ${isRecent?'<span class="recent-tag">上次使用</span>':''}
           ${isAdded?'<span class="added-tag">✓ 已加入</span>':''}
+          ${engName && !isAdded && !isRecent ? `<span class="picker-ex-eng">${escHtml(engName)}</span>` : ''}
         </div>
       </div>
     </div>`;
