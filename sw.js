@@ -1,7 +1,7 @@
-const CACHE = 'fitness-v12';
+const CACHE = 'fitness-v13';
 const MEDIA_CACHE = 'fitness-media-v1';
 const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
-  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './manifest.json'];
+  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {}));

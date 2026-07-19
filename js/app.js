@@ -509,6 +509,11 @@ function _render(screen, params) {
     b.classList.toggle('active', b.dataset.tab === screen));
   ({home, history, progress, selectType, selectBodyPart, addExercises, addCardio, dayDetail, exerciseStats, avatar: avatarScreen, onboarding})[screen]
     ?.(params, {title: document.getElementById('header-title'), right: document.getElementById('header-right')});
+  if (typeof ANIM !== 'undefined') {
+    ANIM.pageEnter();
+    if (screen === 'home') { ANIM.startBreathing(); ANIM.flushPartGlow(); }
+    else ANIM.stopBreathing();
+  }
 }
 
 // ── Engine 狀態（部位分數/耐力/休養，全部由紀錄純函數推導）──────────────────
@@ -988,6 +993,7 @@ function selectBodyPart({date}, {title}) {
         </button>`;
       }).join('')}
     </div>`;
+  if (typeof ANIM !== 'undefined') ANIM.animScoreBars();
 }
 function pickPart(part, date) {
   const last = DB.lastForPart(part);
@@ -1162,6 +1168,7 @@ function saveWeightWorkout(date, part) {
   showToast((prNames.length
     ? `🏆 新紀錄！${prNames.slice(0,2).join('・')}${prNames.length > 2 ? '…' : ''}`
     : (wasEdit ? '已更新 ✓' : '訓練已儲存 ✓')) + xpTag);
+  if (typeof ANIM !== 'undefined') ANIM.queuePartGlow(part);
   if (_xpAfter.level > _xpBefore.level) setTimeout(() => showLevelUp(_xpAfter.level), 700);
   window.currentExercises = []; window._editId = null;
   setTimeout(()=>{ stack.length=0; App.goTo('dayDetail',{date}); }, 500);
@@ -1929,6 +1936,7 @@ function avatarScreen(_, {title, right}) {
       <div class="prog-sec-title">成長階段</div>
       ${roadmap}
     </div>`;
+  if (typeof ANIM !== 'undefined') ANIM.animScoreBars();
 }
 
 // ── Level-up Modal ─────────────────────────────────────────────────────────
@@ -1951,6 +1959,11 @@ function showLevelUp(level) {
     </div>`;
   document.body.appendChild(el);
   requestAnimationFrame(() => el.classList.add('open'));
+  if (typeof ANIM !== 'undefined') {
+    const card = el.querySelector('.levelup-card');
+    card.style.animation = 'none';
+    ANIM.levelUpEnter(card);
+  }
 }
 
 function closeLevelUp() {
