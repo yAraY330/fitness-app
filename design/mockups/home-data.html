@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>示意 B｜訓練日誌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sig: #ff5a1f; --bg: #111214; --raised: #1a1c1f; --text: #ececec; --muted: #a3a6ab;
+  --hair: #2c2f33; --warn: #ffb020;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif;
+  padding: 18px 20px 100px; max-width: 430px; margin: 0 auto; }
+.num { font-family: Archivo, sans-serif; font-feature-settings: "tnum" 1; }
+.ic { display: inline-block; width: 24px; height: 24px; background: currentColor;
+  -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+
+.top { display: flex; justify-content: space-between; align-items: baseline; color: var(--muted); font-size: 14px; }
+.top b { color: var(--text); font-weight: 500; }
+
+/* 決策區 */
+.decide { padding: 34px 0 28px; }
+.decide .q { color: var(--muted); font-size: 15px; }
+.decide h1 { font-size: 44px; font-weight: 800; line-height: 1.15; margin-top: 6px; }
+.decide h1 em { font-style: normal; color: var(--sig); }
+.decide p { margin-top: 10px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.decide p b { color: var(--warn); font-weight: 500; }
+.cta { margin-top: 24px; width: 100%; height: 60px; border: 0; border-radius: 8px; background: var(--sig);
+  color: #111214; font-family: inherit; font-weight: 800; font-size: 19px; display: flex;
+  align-items: center; justify-content: center; gap: 8px; }
+.alt { display: block; text-align: center; margin-top: 14px; color: var(--muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+
+hr { border: 0; border-top: 1px solid var(--hair); }
+
+/* 身體 + 部位表 */
+.body { display: grid; grid-template-columns: 112px 1fr; gap: 16px; padding: 22px 0; align-items: start; }
+.fig { background: var(--raised); border-radius: 8px; padding: 10px 6px; }
+.head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding-bottom: 6px; }
+.part { display: grid; grid-template-columns: 34px 1fr 26px 34px; gap: 8px; align-items: center;
+  height: 33px; font-size: 14px; }
+.part .bar { height: 6px; background: var(--hair); border-radius: 4px; overflow: hidden; }
+.part .bar i { display: block; height: 100%; background: var(--text); border-radius: 4px; }
+.part .s { text-align: right; font-weight: 600; }
+.part .ago { text-align: right; color: var(--muted); font-size: 12px; }
+.part.pick .n, .part.pick .s { color: var(--sig); }
+.part.pick .bar i { background: var(--sig); }
+.part.pick .ago { color: var(--warn); }
+
+/* 週列 */
+.week { padding: 22px 0 6px; }
+.week .line { font-size: 14px; color: var(--muted); }
+.week .line b { color: var(--text); font-weight: 600; }
+.cols { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 14px; align-items: end; height: 92px; }
+.col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.col i { width: 100%; background: var(--text); border-radius: 3px; min-height: 3px; }
+.col.zero i { background: var(--hair); }
+.col.today i { background: transparent; outline: 1.5px dashed var(--muted); height: 40px; }
+.col span { font-size: 12px; color: var(--muted); }
+.col.today span { color: var(--text); font-weight: 500; }
+.xp { margin-top: 18px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.xp .track { flex: 1; height: 4px; background: var(--hair); border-radius: 4px; }
+.xp .track i { display: block; width: 56.5%; height: 100%; background: var(--muted); border-radius: 4px; }
+
+nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--hair);
+  display: grid; grid-template-columns: repeat(5, 1fr); max-width: 430px; margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom); }
+nav a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 0 12px;
+  color: var(--muted); font-size: 11px; text-decoration: none; border-top: 2px solid transparent; margin-top: -1px; }
+nav a.on { color: var(--sig); border-top-color: var(--sig); }
+</style>
+</head>
+<body>
+<div class="top"><span><b>阿力</b>　Lv.3 健身新手</span><span class="num">10/4 週日</span></div>
+
+<section class="decide">
+  <div class="q">今天練什麼？</div>
+  <h1>練<em>腿</em>。</h1>
+  <p>腿部 <span class="num">12</span> 天沒練，分數已經 <b>−5</b>，現在 <span class="num">53</span> 分。<br>跟胸部（<span class="num">90</span>）差了 <span class="num">37</span> 分。</p>
+  <button class="cta">開始練腿</button>
+  <a class="alt" href="#">選其他部位</a>
+</section>
+
+<hr>
+
+<section class="body">
+  <div class="fig" id="av"></div>
+  <div>
+    <div class="head"><span>部位　由弱到強</span><span>上次</span></div>
+    <div id="parts"></div>
+  </div>
+</section>
+
+<hr>
+
+<section class="week">
+  <div class="line">本週 <b class="num">5</b> 天　·　連續 <b class="num">4</b> 天　·　耐力 <b class="num">37</b></div>
+  <div class="cols" id="cols"></div>
+  <div class="xp"><span class="num">Lv.3</span><div class="track"><i></i></div><span class="num">113 / 200</span></div>
+</section>
+
+<nav>
+  <a class="on" href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/home.svg)"></i>首頁</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/user.svg)"></i>角色</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/calendar.svg)"></i>歷史</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/chart-bar.svg)"></i>進度</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/stopwatch.svg)"></i>計時</a>
+</nav>
+
+<script src="../../js/avatar.js"></script>
+<script src="mock-data.js"></script>
+<script>
+document.getElementById('av').innerHTML = mockAvatarSvg();
+const sorted = [...MOCK.parts].sort((a, b) => a.s - b.s);
+document.getElementById('parts').innerHTML = sorted.map(p => `
+  <div class="part ${p.k === 'legs' ? 'pick' : ''}">
+    <span class="n">${p.n}</span>
+    <div class="bar"><i style="width:${p.s}%"></i></div>
+    <span class="s num">${p.s}</span>
+    <span class="ago num">${p.ago}天</span>
+  </div>`).join('');
+const max = Math.max(...MOCK.week.map(w => w.vol));
+document.getElementById('cols').innerHTML = MOCK.week.map(w => `
+  <div class="col ${w.today ? 'today' : w.vol ? '' : 'zero'}">
+    <i style="height:${w.today ? 40 : Math.max(3, w.vol / max * 64)}px"></i><span>${w.today ? '今天' : w.wd}</span>
+  </div>`).join('');
+</script>
+</body>
+</html>

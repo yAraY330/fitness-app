@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>示意 A｜原稿紙</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Dela+Gothic+One&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #111111; --paper: #ffffff; --red: #c8241b; --muted: #4a4a4a; --tone: #b8b8b8;
+  --line: 3px; --gut: 10px;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: 'Noto Sans TC', sans-serif; font-weight: 500;
+  padding: 12px 12px 96px; max-width: 430px; margin: 0 auto;
+}
+.ic { display: inline-block; width: 24px; height: 24px; background: currentColor;
+  -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+
+/* 刊頭 */
+.masthead { display: flex; align-items: flex-end; justify-content: space-between;
+  border-bottom: var(--line) solid var(--ink); padding-bottom: 8px; margin-bottom: var(--gut); }
+.masthead h1 { font-weight: 900; font-size: 30px; line-height: 1; letter-spacing: .02em; }
+.masthead h1 small { font-size: 15px; font-weight: 700; margin-left: 6px; }
+.ep { text-align: right; font-size: 13px; font-weight: 700; line-height: 1.3; }
+.ep b { font-family: Anton, sans-serif; font-weight: 400; font-size: 26px; display: block; line-height: 1; }
+
+/* 主角格：斜切下緣 + 集中線 + 網點 */
+.hero {
+  position: relative; height: 476px; overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% 93%, 0 100%);
+  background:
+    radial-gradient(circle at 50% 46%, var(--paper) 0 30%, transparent 62%),
+    repeating-conic-gradient(from 0deg at 50% 46%, var(--ink) 0deg 1.1deg, transparent 1.1deg 7deg),
+    var(--paper);
+}
+.hero-frame { /* 外層墨色 + 內層紙白，做出斜切格的完整墨線 */
+  background: var(--ink); padding: var(--line);
+  clip-path: polygon(0 0, 100% 0, 100% 93%, 0 100%);
+}
+.tone { /* 網點：只在角色腳下當陰影 */
+  position: absolute; left: 50%; top: 376px; width: 180px; height: 34px; transform: translateX(-50%);
+  background: radial-gradient(circle, var(--tone) 1.6px, transparent 1.8px) 0 0 / 6px 6px;
+  border-radius: 50%;
+}
+.avatar { position: absolute; left: 50%; top: 40px; width: 230px; transform: translateX(-50%); }
+.sfx { position: absolute; left: 14px; top: 14px; font-family: 'Dela Gothic One', sans-serif;
+  font-size: 42px; line-height: .95; color: var(--paper); -webkit-text-stroke: 2.5px var(--ink);
+  paint-order: stroke fill; transform: rotate(-8deg); }
+.vert { position: absolute; right: 12px; top: 16px; writing-mode: vertical-rl; background: var(--paper);
+  border: 2px solid var(--ink); padding: 10px 6px; font-weight: 900; font-size: 19px; letter-spacing: .12em; }
+.vert em { font-style: normal; color: var(--red); font-family: Anton, sans-serif; font-size: 30px;
+  text-combine-upright: all; letter-spacing: 0; }
+.bubble { position: absolute; left: 14px; top: 306px; background: var(--paper); border: 2.5px solid var(--ink);
+  border-radius: 50%; padding: 18px 20px; font-weight: 900; font-size: 16px; line-height: 1.35; text-align: center; }
+.bubble::before, .bubble::after { content: ''; position: absolute; top: 34%;
+  clip-path: polygon(0 0, 100% 0, 0 100%); }
+.bubble::before { right: -30px; width: 40px; height: 26px; background: var(--ink); transform: rotate(-18deg); }
+.bubble::after { right: -24px; width: 33px; height: 20px; top: calc(34% + 3px); background: var(--paper); transform: rotate(-18deg); }
+.bubble span { color: var(--red); }
+
+/* 等級列：手繪尺規風 */
+.lv { position: absolute; left: 14px; right: 14px; bottom: 52px; display: flex; align-items: center; gap: 10px; }
+.lv-tag { background: var(--ink); color: var(--paper); font-family: Anton, sans-serif; font-size: 20px;
+  padding: 2px 10px 0; }
+.lv-bar { flex: 1; height: 14px; border: 2px solid var(--ink); background: var(--paper); }
+.lv-bar i { display: block; height: 100%; width: 56.5%; background: var(--ink); }
+.lv-num { font-family: Anton, sans-serif; font-size: 16px; background: var(--paper); padding: 0 2px; }
+
+/* 下方兩格 */
+.row { display: grid; grid-template-columns: 96px 1fr; gap: var(--gut); margin-top: var(--gut); }
+.panel { border: var(--line) solid var(--ink); padding: 12px; }
+.inv { background: var(--ink); color: var(--paper); display: flex; flex-direction: column;
+  justify-content: center; align-items: center; text-align: center; }
+.inv b { font-family: Anton, sans-serif; font-weight: 400; font-size: 54px; line-height: .9; }
+.inv span { font-weight: 700; font-size: 13px; margin-top: 4px; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 2px; }
+.week .wd { font-size: 12px; font-weight: 700; color: var(--muted); }
+.week .d { position: relative; height: 38px; font-size: 15px !important; display: grid; place-items: center; font-family: Anton, sans-serif; font-size: 18px; }
+.week .done::before { content: ''; position: absolute; width: 26px; height: 26px; border: 2px solid var(--red);
+  border-radius: 50%; transform: rotate(-12deg); }
+.week .done { color: var(--red); }
+.week .today { background: var(--ink); color: var(--paper); }
+
+/* 主按鈕 */
+.cta { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 64px;
+  margin-top: var(--gut); background: var(--ink); color: var(--paper); border: 0; padding: 0 20px;
+  font-family: inherit; font-weight: 900; font-size: 22px; letter-spacing: .1em; cursor: pointer; }
+.cta:active { transform: translate(2px, 2px); }
+.cta small { font-size: 13px; letter-spacing: .02em; font-weight: 700; }
+
+/* 導覽 */
+nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--paper);
+  border-top: var(--line) solid var(--ink); display: grid; grid-template-columns: repeat(5, 1fr);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); max-width: 430px; margin: 0 auto; gap: 4px; }
+nav a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0;
+  font-size: 11px; font-weight: 700; color: var(--ink); text-decoration: none; }
+nav a.on { background: var(--ink); color: var(--paper); }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <h1>阿力<small>修行錄</small></h1>
+  <div class="ep">第<b>47</b>回</div>
+</header>
+
+<div class="hero-frame"><section class="hero">
+  <div class="sfx">ゴゴゴ</div>
+  <div class="vert">連續<em>4</em>日</div>
+  <div class="tone"></div>
+  <div class="avatar" id="av"></div>
+  <div class="bubble">腿…<br>是不是<span>太細</span>了？</div>
+  <div class="lv">
+    <span class="lv-tag">Lv.3</span>
+    <div class="lv-bar"><i></i></div>
+    <span class="lv-num">113/200</span>
+  </div>
+</section></div>
+
+<div class="row">
+  <div class="panel inv"><b>5</b><span>本週練了</span></div>
+  <div class="panel week" id="week"></div>
+</div>
+
+<button class="cta">開始訓練<small>建議：腿部 ／ 12 天沒練</small></button>
+
+<nav>
+  <a class="on" href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/home.svg)"></i>首頁</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/user.svg)"></i>角色</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/calendar.svg)"></i>歷史</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/chart-bar.svg)"></i>進度</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/stopwatch.svg)"></i>計時</a>
+</nav>
+
+<script src="../../js/avatar.js"></script>
+<script src="mock-data.js"></script>
+<script>
+document.getElementById('av').innerHTML = mockAvatarSvg();
+document.getElementById('week').innerHTML =
+  MOCK.week.map(w => `<div class="wd">${w.wd}</div>`).join('') +
+  MOCK.week.map(w => `<div class="d ${w.today ? 'today' : w.vol ? 'done' : ''}">${w.d}</div>`).join('');
+</script>
+</body>
+</html>

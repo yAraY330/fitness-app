@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RPG 角色畫質比較</title>
+<style>
+@font-face { font-family: 'Cubic 11'; src: url(https://cdn.jsdelivr.net/gh/ACh-K/Cubic-11@main/fonts/web/Cubic_11.woff2) format('woff2'); }
+body { margin: 0; padding: 16px; background: #0a0d24; color: #fff; font-family: 'Cubic 11', monospace; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; max-width: 760px; margin: 0 auto; }
+.cell { background: #000; border: 3px solid #fff; border-radius: 6px; padding: 10px; }
+.cell h2 { font-size: 16px; font-weight: 400; margin: 0 0 4px; color: #ffd34d; }
+.cell p { font-size: 12px; margin: 0; color: #aab0d0; line-height: 1.5; min-height: 36px; }
+.stage { position: relative; height: 340px; display: grid; place-items: end center; margin-top: 8px;
+  background: linear-gradient(#0a0d24 0 86%, #1b2150 86%); border-top: 0; }
+.stage canvas, .stage .vec { position: relative; margin-bottom: 26px; image-rendering: pixelated; }
+.stage .vec { width: 200px; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="cell"><h2>① 現在示意圖（64px 直接縮）</h2><p>縮小時邊緣被平均糊掉，描邊消失。</p><div class="stage" id="s1"></div></div>
+  <div class="cell"><h2>② 96px 像素畫處理</h2><p>不混色取樣＋補 1px 黑描邊，SNES 角色的精細度。</p><div class="stage" id="s2"></div></div>
+  <div class="cell"><h2>③ 128px 像素畫處理</h2><p>同②但解析度更高，肌肉線條保留更多。</p><div class="stage" id="s3"></div></div>
+  <div class="cell"><h2>④ 高清角色＋像素介面</h2><p>角色保持原本向量高清，只有介面是像素風（類似《八方旅人》立繪做法）。</p><div class="stage" id="s4"></div></div>
+</div>
+
+<script src="../../js/avatar.js"></script>
+<script src="mock-data.js"></script>
+<script>
+const svg = mockAvatarSvg().replace('style="width:100%;height:auto;display:block"', '');
+const OUTLINE = [22, 16, 10];
+
+// 方法①：直接把 SVG 畫到小 canvas（瀏覽器會做抗鋸齒混色 → 糊）
+function naive(img, w) {
+  const h = Math.round(w * img.height / img.width), c = document.createElement('canvas');
+  c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+  return c;
+}
+
+// 方法②③：先高解析渲染，每格只取中心點顏色（不混色）→ alpha 二值化 → 外圍補 1px 描邊
+function pixelArt(img, w) {
+  const h = Math.round(w * img.height / img.width), K = 8;
+  const big = document.createElement('canvas'); big.width = w * K; big.height = h * K;
+  big.getContext('2d').drawImage(img, 0, 0, w * K, h * K);
+  const src = big.getContext('2d').getImageData(0, 0, w * K, h * K).data;
+  const c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+  const ctx = c.getContext('2d'), out = ctx.createImageData(w + 2, h + 2), d = out.data;
+  const solid = new Uint8Array((w + 2) * (h + 2));
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const si = ((y * K + K / 2) * w * K + (x * K + K / 2)) * 4, di = ((y + 1) * (w + 2) + x + 1);
+    if (src[si + 3] < 128) continue;
+    d[di * 4] = src[si]; d[di * 4 + 1] = src[si + 1]; d[di * 4 + 2] = src[si + 2]; d[di * 4 + 3] = 255;
+    solid[di] = 1;
+  }
+  for (let y = 0; y < h + 2; y++) for (let x = 0; x < w + 2; x++) {
+    const i = y * (w + 2) + x; if (solid[i]) continue;
+    const n = (x > 0 && solid[i - 1]) || (x < w + 1 && solid[i + 1]) || (y > 0 && solid[i - w - 2]) || (y < h + 1 && solid[i + w + 2]);
+    if (n) { d[i * 4] = OUTLINE[0]; d[i * 4 + 1] = OUTLINE[1]; d[i * 4 + 2] = OUTLINE[2]; d[i * 4 + 3] = 255; }
+  }
+  ctx.putImageData(out, 0, 0);
+  return c;
+}
+
+const img = new Image();
+img.onload = () => {
+  const put = (id, c, scale) => { c.style.width = c.width * scale + 'px'; document.getElementById(id).appendChild(c); };
+  put('s1', naive(img, 64), 3.25);
+  put('s2', pixelArt(img, 96), 2);
+  put('s3', pixelArt(img, 128), 1.6);
+  const v = document.createElement('div'); v.className = 'vec'; v.innerHTML = mockAvatarSvg();
+  document.getElementById('s4').appendChild(v);
+};
+img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+</script>
+</body>
+</html>

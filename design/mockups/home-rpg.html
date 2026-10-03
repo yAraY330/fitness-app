@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>示意 C｜狀態視窗</title>
+<style>
+/* Cubic 11 俐方體11號：github.com/ACh-K/Cubic-11（SIL OFL 1.1） */
+@font-face { font-family: 'Cubic 11'; src: url(https://cdn.jsdelivr.net/gh/ACh-K/Cubic-11@main/fonts/web/Cubic_11.woff2) format('woff2'); font-display: swap; }
+:root { --gold: #ffd34d; --sky: #0a0d24; --win: #000; --white: #fff; --hp: #4ade80; --danger: #ff6b6b; --muted: #aab0d0; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--sky); color: var(--white); font-family: 'Cubic 11', monospace;
+  padding: 12px 12px 92px; max-width: 430px; margin: 0 auto; -webkit-font-smoothing: none; }
+.win { background: var(--win); border: 3px solid var(--white); border-radius: 6px; padding: 12px 14px;
+  box-shadow: 0 0 0 3px var(--win); }
+.ic { display: inline-block; width: 22px; height: 22px; background: currentColor;
+  -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+
+/* 狀態窗 */
+.status { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 16px; }
+.status .name { font-size: 22px; }
+.status .lv { text-align: right; font-size: 18px; }
+.meter { grid-column: 1 / -1; display: grid; grid-template-columns: 44px 1fr 76px; gap: 8px; align-items: center; font-size: 13px; }
+.meter .bar { height: 10px; border: 2px solid var(--white); }
+.meter .bar i { display: block; height: 100%; }
+.meter .v { text-align: right; }
+
+/* 場景 */
+.stage { position: relative; height: 330px; margin: 10px 0; display: grid; place-items: end center; }
+.stage::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
+  background: #1b2150; border-top: 4px solid #2b3375; }
+.hero { position: relative; z-index: 1; width: 200px; margin-bottom: 20px; }
+.streak { position: absolute; right: 0; top: 0; font-size: 13px; padding: 8px 10px; z-index: 2; }
+.streak b { color: var(--gold); font-weight: 400; font-size: 18px; }
+
+/* 對話窗 */
+.msg { font-size: 16px; line-height: 1.7; min-height: 94px; position: relative; }
+.msg .hl { color: var(--danger); }
+.msg .more { position: absolute; right: 12px; bottom: 6px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 指令窗 + 週日誌 */
+.row { display: grid; grid-template-columns: 1.25fr 1fr; gap: 10px; margin-top: 10px; }
+.cmd { font-size: 18px; line-height: 2; }
+.cmd div { padding-left: 22px; position: relative; }
+.cmd .sel { color: var(--gold); }
+.cmd .sel::before { content: '▶'; position: absolute; left: 0; font-size: 14px; animation: nudge .6s steps(2) infinite; }
+@keyframes nudge { 50% { transform: translateX(3px); } }
+.log { font-size: 13px; }
+.log .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 10px; text-align: center; }
+.log .days i { display: block; aspect-ratio: 1; border: 2px solid var(--white); }
+.log .days i.on { background: var(--gold); border-color: var(--gold); }
+.log .days i.today { border-style: dashed; }
+.log .days span { font-size: 11px; color: var(--muted); }
+.log .sum { margin-top: 10px; color: var(--muted); }
+.log .sum b { color: var(--white); font-weight: 400; }
+
+@media (prefers-reduced-motion: reduce) { .msg .more, .cmd .sel::before { animation: none; } }
+
+nav { position: fixed; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); max-width: 414px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(5, 1fr); padding: 4px; gap: 4px; }
+nav a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; color: var(--white);
+  font-size: 12px; text-decoration: none; }
+nav a.on { background: var(--gold); color: #000; }
+</style>
+</head>
+<body>
+<section class="win status">
+  <div class="name">阿力</div><div class="lv">Lv 3</div>
+  <div class="meter"><span>EXP</span><div class="bar"><i style="width:56.5%;background:var(--gold)"></i></div><span class="v">113/200</span></div>
+  <div class="meter"><span>耐力</span><div class="bar"><i style="width:37%;background:var(--hp)"></i></div><span class="v">37/100</span></div>
+</section>
+
+<section class="stage">
+  <div class="win streak">連續 <b>4</b> 日</div>
+  <div id="hero" class="hero"></div>
+</section>
+
+<section class="win msg">
+  <span id="type"></span>
+  <span class="more">▼</span>
+</section>
+
+<div class="row">
+  <section class="win cmd">
+    <div class="sel">開始訓練</div>
+    <div>能力值</div>
+    <div>冒險日誌</div>
+  </section>
+  <section class="win log">
+    本週修行 <b>5</b>/7
+    <div class="days" id="days"></div>
+    <div class="sum">弱點：<b>肩 43</b></div>
+  </section>
+</div>
+
+<nav class="win">
+  <a class="on" href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/home.svg)"></i>首頁</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/user.svg)"></i>角色</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/calendar.svg)"></i>歷史</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/chart-bar.svg)"></i>進度</a>
+  <a href="#"><i class="ic" style="--i:url(https://cdn.jsdelivr.net/npm/@tabler/icons@3/icons/outline/stopwatch.svg)"></i>計時</a>
+</nav>
+
+<script src="../../js/avatar.js"></script>
+<script src="mock-data.js"></script>
+<script>
+// 角色維持高清（④）：Plan A 完成後此處換成 Rive canvas
+document.getElementById('hero').innerHTML = mockAvatarSvg();
+
+document.getElementById('days').innerHTML =
+  MOCK.week.map(w => `<div><i class="${w.today ? 'today' : w.vol ? 'on' : ''}"></i><span>${w.wd}</span></div>`).join('');
+
+// 對話窗打字機
+const text = '阿力的<span class="hl">腿部</span>已經 12 天沒有鍛鍊了……<br>腿部能力下降了 <span class="hl">5</span> 點！';
+const el = document.getElementById('type');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) el.innerHTML = text;
+else {
+  let i = 0;
+  const tick = () => {
+    if (text[i] === '<') i = text.indexOf('>', i) + 1; else i++;
+    el.innerHTML = text.slice(0, i);
+    if (i < text.length) setTimeout(tick, 45);
+  };
+  tick();
+}
+</script>
+</body>
+</html>
