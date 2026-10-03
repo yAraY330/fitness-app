@@ -252,31 +252,6 @@ const DB = {
     if (!d.custom[part]) d.custom[part]=[];
     if (!d.custom[part].includes(name)) { d.custom[part].push(name); this._save(d); }
   },
-  getPR(name) { return (this._load().prs || {})[name] || null; },
-  checkAndUpdatePRs(exercises, date) {
-    const d = this._load();
-    if (!d.prs) d.prs = {};
-    const hit = [];
-    exercises.forEach(ex => {
-      const cur = d.prs[ex.name] || {};
-      ex.sets.forEach(set => {
-        let changed = false;
-        if (set.weight > 0 && (cur.maxWeight == null || set.weight > cur.maxWeight)) {
-          cur.maxWeight = set.weight; cur.maxWeightDate = date; changed = true;
-        }
-        if (set.reps > 0 && (cur.maxReps == null || set.reps > cur.maxReps)) {
-          cur.maxReps = set.reps; cur.maxRepsDate = date; changed = true;
-        }
-        const vol = (set.weight || 0) * (set.reps || 0);
-        if (vol > 0 && (cur.maxVolume == null || vol > cur.maxVolume)) {
-          cur.maxVolume = vol; cur.maxVolumeDate = date; changed = true;
-        }
-        if (changed) { d.prs[ex.name] = cur; if (!hit.includes(ex.name)) hit.push(ex.name); }
-      });
-    });
-    if (hit.length) this._save(d);
-    return hit;
-  },
   getAvatar() { return this._load().avatar || null; },
   // 體重時間序列；無紀錄時以 avatar 建檔體重補一筆（建檔日），維持純函數推導
   getBodyWeights() {
@@ -315,6 +290,74 @@ const DB = {
         return { date: w.date, maxWeight: maxW, totalVol: vol, maxReps: maxR };
       }).filter(Boolean);
   },
+};
+
+// 個人紀錄（純函數由全部紀錄重算）：取歷來最高重量，再取「該最高重量下單組最多次數」
+// 回傳 {weight, reps, date}；weight 一律 kg（顯示端再換算），date 為達成該 PR 的日期
+function computePR(name) {
+  const workouts = DB._load().workouts.filter(w => w.type === 'weight');
+  let maxWeight = 0;
+  workouts.forEach(w => (w.exercises || []).forEach(ex => {
+    if (ex.name !== name) return;
+    (ex.sets || []).forEach(s => { const wt = parseFloat(s.weight) || 0; if (wt > maxWeight) maxWeight = wt; });
+  }));
+  if (maxWeight <= 0) return null;
+  let reps = 0, date = null;
+  workouts.forEach(w => (w.exercises || []).forEach(ex => {
+    if (ex.name !== name) return;
+    (ex.sets || []).forEach(s => {
+      const wt = parseFloat(s.weight) || 0, rp = parseInt(s.reps) || 0;
+      if (wt === maxWeight && rp > reps) { reps = rp; date = w.date; }
+    });
+  }));
+  return { weight: maxWeight, reps, date };
+}
+
+// 是否刷新 PR（突破最高重量，或在最高重量下刷新次數）
+function isNewPR(after, before) {
+  if (!after || after.weight <= 0) return false;
+  if (!before) return true;
+  return after.weight > before.weight || (after.weight === before.weight && after.reps > before.reps);
+}
+
+// ── 訓練 Session（進行中訓練持久化；支援多部位、重開還原、鎖導覽）──────────────
+const Session = {
+  KEY: 'fitnessApp_session_v1',
+  _load() { try { return JSON.parse(localStorage.getItem(this.KEY)) || null; } catch { return null; } },
+  _save(s) { try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) { showToast('儲存失敗：裝置空間不足'); } },
+  isActive() { return !!this._load(); },
+  get() { return this._load(); },
+  start(date) {
+    const s = { date, startedAt: Date.now(), startStr: currentTimeStr(), parts: [], view: { screen: 'selectBodyPart', part: null } };
+    this._save(s);
+    return s;
+  },
+  setView(screen, part) {
+    const s = this._load(); if (!s) return;
+    s.view = { screen, part: part || null }; this._save(s);
+  },
+  savePartDraft(part, exercises) {
+    const s = this._load(); if (!s || !part) return;
+    const entry = { part, exercises: (exercises || []).map(ex => ({
+      name: ex.name, unit: ex.unit || 'kg',
+      sets: (ex.sets || []).map(st => ({ weight: st.weight, reps: st.reps })),
+    })) };
+    const i = s.parts.findIndex(p => p.part === part);
+    if (i >= 0) s.parts[i] = entry; else s.parts.push(entry);
+    this._save(s);
+  },
+  getPartDraft(part) {
+    const s = this._load(); if (!s) return null;
+    return s.parts.find(p => p.part === part) || null;
+  },
+  // 已有實際資料（填了重量或次數）的部位集合
+  recordedParts() {
+    const s = this._load(); if (!s) return new Set();
+    return new Set(s.parts
+      .filter(p => p.exercises.some(ex => (ex.sets || []).some(st => st.weight !== '' || st.reps !== '')))
+      .map(p => p.part));
+  },
+  end() { try { localStorage.removeItem(this.KEY); } catch {} },
 };
 
 // ── Rest Timer (nav-based) ─────────────────────────────────────────────────
@@ -473,7 +516,7 @@ let currentScreen = 'home', currentParams = {};
 
 const App = {
   goTo(screen, params) {
-    if (currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
+    if (!Session.isActive() && currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
       if (!confirm('離開後目前紀錄將消失，確定離開？')) return;
       window.currentExercises = []; window._editId = null;
     }
@@ -481,6 +524,15 @@ const App = {
     _render(screen, params || {});
   },
   back() {
+    // 訓練模式：動作頁返回只回到選部位頁（草稿已持久化），選部位頁則不可逃脫
+    if (Session.isActive()) {
+      if (currentScreen === 'addExercises') {
+        _syncInputs();
+        Session.savePartDraft(currentParams.part, window.currentExercises);
+        _render('selectBodyPart', { date: currentParams.date });
+      }
+      return;
+    }
     if (currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
       if (!confirm('離開後目前紀錄將消失，確定離開？')) return;
       window.currentExercises = []; window._editId = null;
@@ -490,6 +542,7 @@ const App = {
     _render(prev.screen, prev.params);
   },
   goHome() {
+    if (Session.isActive()) return; // 訓練模式中不可直接回首頁，需按「結束訓練」
     if (currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
       if (!confirm('離開後目前紀錄將消失，確定離開？')) return;
     }
@@ -503,12 +556,26 @@ function _render(screen, params) {
   currentScreen = screen; currentParams = params;
   document.getElementById('content').scrollTop = 0;
   window.scrollTo(0, 0);
-  document.getElementById('back-btn').className = stack.length ? '' : 'hidden';
+  const inSession = Session.isActive();
+  // 訓練模式：記住目前位置（供重開還原）、鎖住底部導覽分頁
+  if (inSession && (screen === 'selectBodyPart' || screen === 'addExercises')) {
+    Session.setView(screen, params.part);
+  }
+  document.querySelectorAll('#bottom-nav .nav-item[data-tab]').forEach(b => {
+    b.style.display = inSession ? 'none' : '';
+    b.classList.toggle('active', b.dataset.tab === screen);
+  });
+  // 返回鍵：訓練模式下只在動作頁顯示（回選部位頁）；一般模式依 stack
+  document.getElementById('back-btn').className =
+    (inSession ? (screen === 'addExercises') : stack.length) ? '' : 'hidden';
   document.getElementById('header-right').innerHTML = '';
-  document.querySelectorAll('#bottom-nav .nav-item[data-tab]').forEach(b =>
-    b.classList.toggle('active', b.dataset.tab === screen));
   ({home, history, progress, selectType, selectBodyPart, addExercises, addCardio, dayDetail, exerciseStats, avatar: avatarScreen, onboarding})[screen]
     ?.(params, {title: document.getElementById('header-title'), right: document.getElementById('header-right')});
+  // 訓練模式常駐「結束訓練」按鈕（在螢幕渲染後設定，避免被覆蓋）
+  if (inSession && (screen === 'selectBodyPart' || screen === 'addExercises')) {
+    document.getElementById('header-right').innerHTML =
+      `<button onclick="endTraining()" style="background:var(--gold);color:#111;border:none;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:800;cursor:pointer">結束訓練</button>`;
+  }
   if (typeof ANIM !== 'undefined') {
     ANIM.pageEnter();
     if (screen === 'home') { ANIM.startBreathing(); ANIM.flushPartGlow(); }
@@ -776,12 +843,14 @@ function progress(_, {title}) {
     weekVol[w.bodyPart] = (weekVol[w.bodyPart]||0) + vol;
   });
 
-  // ── 最近 PR（grid，最多 6 筆）──
-  const prs = DB._load().prs || {};
-  const recentPRs = Object.entries(prs)
-    .filter(([, pr]) => pr.maxWeight > 0 && pr.maxWeightDate)
-    .map(([name, pr]) => ({ name, weight: pr.maxWeight, reps: pr.maxReps, date: pr.maxWeightDate }))
-    .sort((a, b) => b.date.localeCompare(a.date))
+  // ── 最近 PR（grid，最多 6 筆；由全部紀錄純函數重算）──
+  const prNames = [...new Set(allWorkouts
+    .filter(w => w.type === 'weight')
+    .flatMap(w => (w.exercises || []).map(e => e.name)))];
+  const recentPRs = prNames
+    .map(name => { const pr = computePR(name); return pr ? { name, weight: pr.weight, reps: pr.reps, date: pr.date } : null; })
+    .filter(Boolean)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
     .slice(0, 6);
 
   // ── 有氧趨勢（allWorkouts 是 newest-first，取前 10 再 reverse 為時序）──
@@ -1001,8 +1070,16 @@ function selectType({date}, {title}) {
     </div>`;
 }
 function pickType(typeId, date) {
-  if (typeId==='weight') App.goTo('selectBodyPart',{date});
+  if (typeId==='weight') startTraining(date);
   else App.goTo('addCardio',{date,typeId});
+}
+
+// 開啟訓練模式：建立 session，進入選部位頁（可連續記錄多個部位）
+function startTraining(date) {
+  Session.start(date);
+  window.currentExercises = []; window._editId = null; window._prefilled = false;
+  stack.length = 0;
+  _render('selectBodyPart', { date });
 }
 
 // ── Score color helper ─────────────────────────────────────────────────────
@@ -1019,13 +1096,20 @@ function _scoreColor(score) {
 function selectBodyPart({date}, {title}) {
   title.textContent = '選擇訓練部位';
   const es = engineState();
-  document.getElementById('content').innerHTML = `
+  const inSession = Session.isActive();
+  const recorded = inSession ? Session.recordedParts() : new Set();
+  const sessionHint = inSession
+    ? `<div class="prefill-banner" style="margin-bottom:12px">💪 訓練中${recorded.size ? `：已記錄 ${recorded.size} 個部位` : '，選一個部位開始'}。可連續記錄多個，完成後按右上「結束訓練」。</div>`
+    : '';
+  document.getElementById('content').innerHTML = sessionHint + `
     <div class="part-grid">
       ${BODY_PARTS.map(p => {
         const s = es.scores[p.id] || {};
         const score = Math.round(s.score || 0);
         const last = DB.lastForPart(p.id);
         const sc = _scoreColor(score);
+        const done = recorded.has(p.id)
+          ? `<span class="psel-badge" style="background:var(--gold);color:#111">已記錄</span>` : '';
         const decay = s.decayDays > 0 && s.raw > 0
           ? `<span class="psel-badge psel-decay">-${s.decayDays}</span>` : '';
         const warn = s.warning
@@ -1040,7 +1124,7 @@ function selectBodyPart({date}, {title}) {
           </div>
           <div class="part-btn-bottom">
             <div class="part-last">${last ? `上次 ${daysAgo(last.date)}` : '尚無紀錄'}</div>
-            ${decay}${warn}
+            ${done}${decay}${warn}
           </div>
         </button>`;
       }).join('')}
@@ -1048,17 +1132,26 @@ function selectBodyPart({date}, {title}) {
   if (typeof ANIM !== 'undefined') ANIM.animScoreBars();
 }
 function pickPart(part, date) {
-  const last = DB.lastForPart(part);
-  window.currentExercises = last
-    ? last.exercises.map(ex => ({name:ex.name, unit:ex.unit||'kg', sets:ex.sets.map(s=>({weight:s.weight,reps:s.reps}))}))
-    : [];
-  window._prefilled = !!last;
+  const draft = Session.isActive() ? Session.getPartDraft(part) : null;
+  if (draft) {
+    // 訓練模式：已有草稿 → 帶回未存完的內容
+    window.currentExercises = draft.exercises.map(ex => ({name:ex.name, unit:ex.unit||'kg', sets:ex.sets.map(s=>({weight:s.weight,reps:s.reps}))}));
+    window._prefilled = false;
+  } else {
+    const last = DB.lastForPart(part);
+    window.currentExercises = last
+      ? last.exercises.map(ex => ({name:ex.name, unit:ex.unit||'kg', sets:ex.sets.map(s=>({weight:s.weight,reps:s.reps}))}))
+      : [];
+    window._prefilled = !!last;
+    if (Session.isActive()) Session.savePartDraft(part, window.currentExercises); // 先建立此部位草稿
+  }
   window._editId = null;
   window._workoutStartTime = Date.now();
   window._workoutStartStr  = currentTimeStr();
   window._workoutEndStr    = '';
   window._workoutDuration  = null;
-  App.goTo('addExercises',{date,part});
+  if (Session.isActive()) _render('addExercises',{date,part});
+  else App.goTo('addExercises',{date,part});
 }
 
 // ── Add Exercises ──────────────────────────────────────────────────────────
@@ -1071,6 +1164,7 @@ function addExercises({date, part}, {title}) {
 function _setExUnit(ei, unit, date, part) {
   _syncInputs();
   if (window.currentExercises[ei]) window.currentExercises[ei].unit = unit;
+  _persistDraftNow(part);
   _renderExerciseScreen(date, part);
 }
 
@@ -1081,7 +1175,7 @@ function _renderExerciseScreen(date, part) {
 
   const banner = prefilled
     ? `<div class="prefill-banner">📋 已帶入上次紀錄
-         <button onclick="window.currentExercises=[];window._prefilled=false;_renderExerciseScreen('${date}','${part}')">清空</button>
+         <button onclick="window.currentExercises=[];window._prefilled=false;_persistDraftNow('${part}');_renderExerciseScreen('${date}','${part}')">清空</button>
        </div>` : '';
 
   const forms = exList.length === 0
@@ -1089,12 +1183,12 @@ function _renderExerciseScreen(date, part) {
     : exList.map((ex, ei) => {
         const exUnit = ex.unit || 'kg';
         const esc = ex.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-        const pr = DB.getPR(ex.name);
+        const pr = computePR(ex.name);
         return `<div class="exercise-item">
           <div class="exercise-header" data-name="${esc}">
             <div class="ex-hd-left">
               <div class="exercise-name">${escHtml(ex.name)}</div>
-              ${pr?.maxWeight > 0 ? `<div class="ex-pr-tag">🏆 PR ${kgToDisplayUnit(pr.maxWeight,exUnit)} ${unitLabelFor(exUnit)} × ${pr.maxReps} 下</div>` : ''}
+              ${pr ? `<div class="ex-pr-tag">🏆 PR ${kgToDisplayUnit(pr.weight,exUnit)} ${unitLabelFor(exUnit)} × ${pr.reps} 下</div>` : ''}
               <div class="ex-unit-pills">
                 <button class="ex-unit-pill${exUnit==='kg'?' active':''}" onclick="_setExUnit(${ei},'kg','${date}','${part}')">kg</button>
                 <button class="ex-unit-pill${exUnit==='lbs'?' active':''}" onclick="_setExUnit(${ei},'lbs','${date}','${part}')">lbs</button>
@@ -1125,7 +1219,8 @@ function _renderExerciseScreen(date, part) {
         </div>`;
       }).join('');
 
-  const timeBar = `
+  // 訓練模式不顯示每部位時間列（時間由整個 session 統一處理）
+  const timeBar = Session.isActive() ? '' : `
     <div class="time-bar">
       <span class="time-bar-label">訓練時間</span>
       <div class="time-range">
@@ -1135,12 +1230,94 @@ function _renderExerciseScreen(date, part) {
       </div>
     </div>`;
 
+  const primaryBtn = exList.length > 0
+    ? (Session.isActive()
+        ? `<button class="btn btn-primary" onclick="finishPart('${date}','${part}')">完成此部位 ✓</button>`
+        : `<button class="btn btn-primary" onclick="saveWeightWorkout('${date}','${part}')">${editMode?'更新紀錄':'完成紀錄'}</button>`)
+    : '';
+
   document.getElementById('content').innerHTML = `
     ${timeBar}
     ${banner}
     <div id="ex-forms">${forms}</div>
     <button class="btn btn-outline" style="margin-bottom:12px" onclick="openPicker('${date}','${part}')">選擇動作</button>
-    ${exList.length>0 ? `<button class="btn btn-primary" onclick="saveWeightWorkout('${date}','${part}')">${editMode?'更新紀錄':'完成紀錄'}</button>` : ''}`;
+    ${primaryBtn}`;
+
+  // 訓練模式：打字時自動把草稿存進 session（debounce），防背景回收後丟失
+  if (Session.isActive()) {
+    document.getElementById('content').oninput = () => _persistDraftSoon(part);
+  }
+}
+
+let _persistTimer = null;
+function _persistDraftSoon(part) {
+  if (!Session.isActive()) return;
+  clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => { _syncInputs(); Session.savePartDraft(part, window.currentExercises); }, 500);
+}
+function _persistDraftNow(part) {
+  if (Session.isActive() && part) Session.savePartDraft(part, window.currentExercises);
+}
+
+// 訓練模式：完成此部位，存回 session 草稿後回到選部位頁
+function finishPart(date, part) {
+  _syncInputs();
+  Session.savePartDraft(part, window.currentExercises);
+  showToast(getPartLabel(part) + ' 已記錄 ✓');
+  _render('selectBodyPart', { date });
+}
+
+// 訓練模式：結束整個 session，逐部位寫入資料庫
+function endTraining() {
+  if (currentScreen === 'addExercises' && currentParams.part) {
+    _syncInputs();
+    Session.savePartDraft(currentParams.part, window.currentExercises);
+  }
+  const s = Session.get();
+  if (!s) { _render('home', {}); return; }
+  const draftParts = (s.parts || []).map(p => ({
+    part: p.part,
+    exercises: p.exercises
+      .map(ex => ({ name: ex.name, unit: ex.unit || 'kg',
+        sets: (ex.sets || []).filter(st => st.weight !== '' || st.reps !== '')
+          .map(st => ({ weight: parseFloat(st.weight) || 0, reps: parseInt(st.reps) || 0 })) }))
+      .filter(ex => ex.sets.length > 0),
+  })).filter(p => p.exercises.length > 0);
+
+  if (!draftParts.length) {
+    if (!confirm('本次訓練還沒有任何紀錄，確定結束並放棄？')) return;
+    Session.end(); window.currentExercises = []; window._editId = null; stack.length = 0;
+    _render('home', {});
+    return;
+  }
+  if (!confirm(`結束訓練並儲存 ${draftParts.length} 個部位的紀錄？`)) return;
+
+  const date = s.date;
+  const duration = Math.min(600, Math.max(1, Math.round((Date.now() - s.startedAt) / 60000)));
+  const endStr = currentTimeStr();
+  const _xpBefore = levelInfo(totalXp());
+  const prNames = [];
+  draftParts.forEach(p => {
+    const beforePRs = {}; p.exercises.forEach(ex => { beforePRs[ex.name] = computePR(ex.name); });
+    const payload = { date, timestamp: Date.now(), type: 'weight', bodyPart: p.part,
+      exercises: p.exercises, startTime: s.startStr, endTime: endStr, duration };
+    const existing = DB.forDate(date).find(w => w.type === 'weight' && w.bodyPart === p.part);
+    if (existing) DB.updateWorkout(existing.id, { ...payload, startTime: existing.startTime || payload.startTime });
+    else DB.addWorkout({ id: genId(), ...payload });
+    p.exercises.forEach(ex => { if (isNewPR(computePR(ex.name), beforePRs[ex.name])) prNames.push(ex.name); });
+  });
+  const _xpAfter = levelInfo(totalXp());
+  const _gain = _xpAfter.total - _xpBefore.total;
+
+  Session.end(); window.currentExercises = []; window._editId = null; stack.length = 0;
+
+  const xpTag = _gain > 0 ? `　+${_gain} XP` : '';
+  showToast((prNames.length
+    ? `🏆 新紀錄！${prNames.slice(0, 2).join('・')}${prNames.length > 2 ? '…' : ''}`
+    : '訓練已儲存 ✓') + xpTag);
+  if (typeof ANIM !== 'undefined') draftParts.forEach(p => ANIM.queuePartGlow(p.part));
+  if (_xpAfter.level > _xpBefore.level) setTimeout(() => showLevelUp(_xpAfter.level), 700);
+  setTimeout(() => { _render('dayDetail', { date }); }, 500);
 }
 
 function _syncInputs() {
@@ -1165,10 +1342,11 @@ function addExToList(name, date, part) {
   window.currentExercises = window.currentExercises || [];
   window.currentExercises.push({name, unit: getUnit(), sets:[{weight:'',reps:''}]});
   closePicker();
+  _persistDraftNow(part);
   _renderExerciseScreen(date, part);
 }
 
-function removeEx(ei, date, part) { _syncInputs(); window.currentExercises.splice(ei,1); _renderExerciseScreen(date,part); }
+function removeEx(ei, date, part) { _syncInputs(); window.currentExercises.splice(ei,1); _persistDraftNow(part); _renderExerciseScreen(date,part); }
 function addSet(ei, date, part) {
   _syncInputs();
   const sets = window.currentExercises[ei].sets;
@@ -1176,11 +1354,12 @@ function addSet(ei, date, part) {
   const hasFill = last && (last.weight !== '' || last.reps !== '');
   sets.push(hasFill ? { weight: last.weight, reps: last.reps } : { weight: '', reps: '' });
   if (!window._editId) RestTimer.start();
+  _persistDraftNow(part);
   _renderExerciseScreen(date, part);
 }
 function removeSet(ei, si, date, part) {
   if (window.currentExercises[ei].sets.length===1) { showToast('至少需要一組'); return; }
-  _syncInputs(); window.currentExercises[ei].sets.splice(si,1); _renderExerciseScreen(date,part);
+  _syncInputs(); window.currentExercises[ei].sets.splice(si,1); _persistDraftNow(part); _renderExerciseScreen(date,part);
 }
 
 function saveWeightWorkout(date, part) {
@@ -1203,6 +1382,8 @@ function saveWeightWorkout(date, part) {
   const payload = {date, timestamp:Date.now(), type:'weight', bodyPart:part, exercises, startTime, ...(endTime?{endTime}:{}), duration};
   const wasEdit = !!window._editId;
   const _xpBefore = levelInfo(totalXp());
+  // PR 比對：存檔前先記下各動作舊 PR
+  const _beforePRs = {}; exercises.forEach(ex => { _beforePRs[ex.name] = computePR(ex.name); });
   if (wasEdit) {
     DB.updateWorkout(window._editId, payload);
   } else {
@@ -1213,7 +1394,7 @@ function saveWeightWorkout(date, part) {
       DB.addWorkout({id:genId(), ...payload});
     }
   }
-  const prNames = DB.checkAndUpdatePRs(exercises, date);
+  const prNames = exercises.map(ex => ex.name).filter(n => isNewPR(computePR(n), _beforePRs[n]));
   const _xpAfter = levelInfo(totalXp());
   const _gain = _xpAfter.total - _xpBefore.total;
   const xpTag = _gain > 0 ? `　+${_gain} XP` : '';
@@ -1477,21 +1658,20 @@ function saveCardio(date, typeId) {
 function showExerciseStats(name) {
   if (document.getElementById('stats-modal')) return;
   lockScroll();
-  const pr   = DB.getPR(name);
+  const pr   = computePR(name);
   const hist = DB.getExerciseHistory(name);
   const u    = unitLabel();
 
-  const prSection = pr?.maxWeight > 0 ? `
+  const prSection = pr ? `
     <div class="stats-pr-grid">
       <div class="stats-pr-card">
-        <div class="stats-pr-val">${kgToDisplay(pr.maxWeight)}<span class="stats-pr-unit"> ${u}</span></div>
-        <div class="stats-pr-label">🏆 最大重量</div>
-        ${pr.maxWeightDate ? `<div class="stats-pr-date">${formatDateShort(pr.maxWeightDate)}</div>` : ''}
+        <div class="stats-pr-val">${kgToDisplay(pr.weight)}<span class="stats-pr-unit"> ${u}</span></div>
+        <div class="stats-pr-label">🏆 最高重量</div>
+        ${pr.date ? `<div class="stats-pr-date">${formatDateShort(pr.date)}</div>` : ''}
       </div>
       <div class="stats-pr-card">
-        <div class="stats-pr-val">${pr.maxReps}<span class="stats-pr-unit"> 下</span></div>
-        <div class="stats-pr-label">最多次數</div>
-        ${pr.maxRepsDate ? `<div class="stats-pr-date">${formatDateShort(pr.maxRepsDate)}</div>` : ''}
+        <div class="stats-pr-val">${pr.reps}<span class="stats-pr-unit"> 下</span></div>
+        <div class="stats-pr-label">該重量最多次數</div>
       </div>
     </div>` : '<p style="color:var(--text-secondary);font-size:14px;text-align:center;padding:12px 0">尚無個人紀錄</p>';
 
@@ -1594,20 +1774,7 @@ function importData() {
             merged.custom[part] = [...new Set([...(merged.custom[part]||[]), ...(parsed.custom[part]||[])])];
           });
         }
-        if (parsed.prs) {
-          merged.prs = merged.prs || {};
-          Object.keys(parsed.prs).forEach(name => {
-            const c = merged.prs[name] || {}, imp = parsed.prs[name] || {};
-            merged.prs[name] = {
-              maxWeight:     (c.maxWeight||0) >= (imp.maxWeight||0) ? c.maxWeight : imp.maxWeight,
-              maxWeightDate: (c.maxWeight||0) >= (imp.maxWeight||0) ? c.maxWeightDate : imp.maxWeightDate,
-              maxReps:       (c.maxReps||0) >= (imp.maxReps||0) ? c.maxReps : imp.maxReps,
-              maxRepsDate:   (c.maxReps||0) >= (imp.maxReps||0) ? c.maxRepsDate : imp.maxRepsDate,
-              maxVolume:     (c.maxVolume||0) >= (imp.maxVolume||0) ? c.maxVolume : imp.maxVolume,
-              maxVolumeDate: (c.maxVolume||0) >= (imp.maxVolume||0) ? c.maxVolumeDate : imp.maxVolumeDate,
-            };
-          });
-        }
+        // 註：PR 現由全部紀錄即時重算（computePR），匯入 workouts 後自動反映，不需合併 prs
 
         localStorage.setItem(DB.KEY, JSON.stringify(merged));
         showToast(`已合併 ${incoming.length} 筆 ✓`);
@@ -2068,4 +2235,21 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 // ── Boot ────────────────────────────────────────────────────────────────────
 
 window.currentExercises = []; window._editId = null; window._prefilled = false; window._workoutEndStr = '';
-_render('home', {});
+
+// 有進行中的訓練 session（且已建角色）→ 還原訓練模式到上次位置，不被踢回首頁
+if (DB.getAvatar() && Session.isActive()) {
+  const s = Session.get();
+  const v = s.view || { screen: 'selectBodyPart', part: null };
+  window._workoutStartStr = s.startStr;
+  if (v.screen === 'addExercises' && v.part) {
+    const draft = Session.getPartDraft(v.part);
+    window.currentExercises = draft
+      ? draft.exercises.map(ex => ({name:ex.name, unit:ex.unit||'kg', sets:ex.sets.map(st=>({weight:st.weight,reps:st.reps}))}))
+      : [];
+    _render('addExercises', { date: s.date, part: v.part });
+  } else {
+    _render('selectBodyPart', { date: s.date });
+  }
+} else {
+  _render('home', {});
+}
