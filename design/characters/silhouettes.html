@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>角色剪影比較</title>
+<style>
+@font-face { font-family: 'Cubic 11'; src: url(https://cdn.jsdelivr.net/gh/ACh-K/Cubic-11@main/fonts/web/Cubic_11.woff2) format('woff2'); }
+body { margin: 0; padding: 16px; background: #0a0d24; color: #fff; font-family: 'Cubic 11', monospace; }
+.wrap { max-width: 760px; margin: 0 auto; }
+.row { background: #000; border: 3px solid #fff; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; }
+.row h2 { margin: 0; font-size: 18px; font-weight: 400; color: #ffd34d; }
+.row p { margin: 4px 0 10px; font-size: 13px; color: #aab0d0; }
+.cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cell { background: linear-gradient(#0a0d24 0 88%, #1b2150 88%); text-align: center; padding-top: 8px; }
+.cell svg { width: 100%; height: 230px; display: block; }
+.cell span { display: block; font-size: 12px; color: #aab0d0; padding: 4px 0 6px; background: #1b2150; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap"></div>
+<script>
+// 剪影產生器：只用基本形（橢圓＋圓頭粗線＋多邊形），同一色填滿 → 純剪影
+// 每個概念：n＝頭身比；各關節位置以「頭高 hh」為單位；t＝肌肉量 0~1
+const C = [
+  { id: 'A', name: '街機格鬥家｜7 頭身', note: '比例寫實、肌肉變化最「真」，但臉最小',
+    n: 7, headRX: .40, sh: 1.25, chest: 1.9, waist: 3.0, crotch: 3.55, knee: 5.2,
+    SW: [0.95, 1.55], arm: [0.26, 0.52], thigh: [0.36, 0.62], grow: 1, extra: 'band' },
+  { id: 'B', name: '冒險者大叔｜5 頭身', note: '臉清楚、身體面積夠，平衡點最好',
+    n: 5, headRX: .44, sh: 1.08, chest: 1.6, waist: 2.35, crotch: 2.75, knee: 3.85,
+    SW: [0.88, 1.42], arm: [0.25, 0.50], thigh: [0.34, 0.58], grow: 1, extra: 'flask' },
+  { id: 'C', name: 'Q 版小勇者｜3.5 頭身', note: '喜感最強，但肌肉要鼓得很誇張才看得出差別',
+    n: 3.5, headRX: .52, sh: 1.0, chest: 1.32, waist: 1.82, crotch: 2.08, knee: 2.75,
+    SW: [0.62, 1.12], arm: [0.20, 0.44], thigh: [0.24, 0.44], grow: 1, extra: 'helm' },
+];
+const LP = (a, b, t) => a + (b - a) * t;
+const FILL = '#d6dbf2';
+
+function figure(c, t) {
+  const H = 280, hh = H / c.n, Y = k => 10 + k * hh, cx = 0;
+  const SW = LP(c.SW[0], c.SW[1], t) * hh, aw = LP(c.arm[0], c.arm[1], t) * hh;
+  const tw = LP(c.thigh[0], c.thigh[1], t) * hh;
+  const latW = SW * LP(0.80, 0.86, t), waistW = SW * LP(0.62, 0.50, t) + hh * 0.08;
+  const hipW = waistW * 1.08;
+  let s = '';
+  // 頭
+  s += `<ellipse cx="0" cy="${Y(.5)}" rx="${c.headRX * hh}" ry="${.5 * hh}"/>`;
+  // 頸＋斜方肌
+  s += `<path d="M${-hh*.2} ${Y(.85)} L${-SW*.55} ${Y(c.sh)} L${SW*.55} ${Y(c.sh)} L${hh*.2} ${Y(.85)}Z"/>`;
+  // 軀幹：肩 → 背闊 → 腰 → 胯
+  s += `<path d="M${-SW} ${Y(c.sh)} C${-SW*1.02} ${Y(c.sh+.25)} ${-latW*1.02} ${Y(c.chest-.15)} ${-latW} ${Y(c.chest)}
+        L${-waistW} ${Y(c.waist)} L${-hipW} ${Y(c.crotch)} L${hipW} ${Y(c.crotch)} L${waistW} ${Y(c.waist)}
+        L${latW} ${Y(c.chest)} C${latW*1.02} ${Y(c.chest-.15)} ${SW*1.02} ${Y(c.sh+.25)} ${SW} ${Y(c.sh)}Z"/>`;
+  // 手臂：張開約 18°，三角肌圓 → 上臂 → 前臂 → 拳
+  [-1, 1].forEach(d => {
+    const sx = d * (SW - aw * .35), sy = Y(c.sh) + aw * .45;
+    const len = (c.crotch - c.sh) * hh * 1.02, ang = 18 * Math.PI / 180;
+    const ex = sx + d * Math.sin(ang) * len * .5, ey = sy + Math.cos(ang) * len * .5;
+    const hx = sx + d * Math.sin(ang) * len, hy = sy + Math.cos(ang) * len;
+    s += `<circle cx="${sx}" cy="${sy}" r="${aw * .78}"/>`;
+    s += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${FILL}" stroke-width="${aw * 1.25}" stroke-linecap="round"/>`;
+    s += `<line x1="${ex}" y1="${ey}" x2="${hx}" y2="${hy}" stroke="${FILL}" stroke-width="${aw * .95}" stroke-linecap="round"/>`;
+    s += `<circle cx="${hx}" cy="${hy + aw * .3}" r="${aw * .62}"/>`;
+  });
+  // 腿：大腿 → 小腿 → 腳
+  const foot = Y(c.n) - 2;
+  [-1, 1].forEach(d => {
+    const hx = d * hipW * .55, kx = d * hipW * .62, fx = d * hipW * .66;
+    s += `<line x1="${hx}" y1="${Y(c.crotch) - tw*.3}" x2="${kx}" y2="${Y(c.knee)}" stroke="${FILL}" stroke-width="${tw * 1.25}" stroke-linecap="round"/>`;
+    s += `<line x1="${kx}" y1="${Y(c.knee)}" x2="${fx}" y2="${foot - tw*.35}" stroke="${FILL}" stroke-width="${tw * .85}" stroke-linecap="round"/>`;
+    s += `<ellipse cx="${fx + d * tw*.15}" cy="${foot - tw*.12}" rx="${tw * .62}" ry="${tw * .3}"/>`;
+  });
+  // 記憶點
+  if (c.extra === 'band') { // 頭帶尾巴垂到肩上
+    [-1, 1].forEach(d => s += `<path d="M${d*c.headRX*hh*.8} ${Y(.35)} L${d*(c.headRX*hh+hh*.55)} ${Y(1.05)} L${d*(c.headRX*hh+hh*.3)} ${Y(1.12)} L${d*c.headRX*hh*.6} ${Y(.5)}Z"/>`);
+  }
+  if (c.extra === 'flask') { // 腰側掛藥水瓶
+    s += `<rect x="${hipW*.85}" y="${Y(c.waist+.05)}" width="${hh*.32}" height="${hh*.42}" rx="${hh*.1}"/>`;
+    s += `<rect x="${hipW*.85 + hh*.1}" y="${Y(c.waist-.05)}" width="${hh*.12}" height="${hh*.14}"/>`;
+  }
+  if (c.extra === 'helm') { // 大頭盔＋單角＋肩後披風
+    s += `<ellipse cx="0" cy="${Y(.36)}" rx="${c.headRX*hh*1.12}" ry="${.42*hh}"/>`;
+    s += `<path d="M${-hh*.08} ${Y(.02)} L0 ${Y(-.06) - hh*.0} L${hh*.06} ${Y(.0)} L${hh*.22} ${Y(-.12)} L${hh*.14} ${Y(.1)}Z"/>`;
+    [-1, 1].forEach(d => s += `<path d="M${d*SW*.7} ${Y(c.sh-.05)} L${d*(SW+hh*.35)} ${Y(c.sh+.55)} L${d*SW*.9} ${Y(c.sh+.4)}Z"/>`);
+  }
+  const W = 300;
+  return `<svg viewBox="${-W/2} 0 ${W} ${H + 22}" fill="${FILL}">${s}</svg>`;
+}
+
+document.getElementById('wrap').innerHTML = C.map(c => `
+  <div class="row"><h2>${c.id}　${c.name}</h2><p>${c.note}</p>
+    <div class="cells">${[0, .5, 1].map((t, i) => `<div class="cell">${figure(c, t)}<span>${['0 分', '50 分（基底）', '100 分'][i]}</span></div>`).join('')}</div>
+  </div>`).join('');
+</script>
+</body>
+</html>

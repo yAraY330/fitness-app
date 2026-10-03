@@ -30,6 +30,7 @@ body { background: var(--sky); color: var(--white); font-family: 'Cubic 11', mon
 .stage::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
   background: #1b2150; border-top: 4px solid #2b3375; }
 .hero { position: relative; z-index: 1; width: 200px; margin-bottom: 20px; }
+.hero img { max-height: 300px; width: auto !important; margin: 0 auto; }
 .streak { position: absolute; right: 0; top: 0; font-size: 13px; padding: 8px 10px; z-index: 2; }
 .streak b { color: var(--gold); font-weight: 400; font-size: 18px; }
 
@@ -106,7 +107,9 @@ nav a.on { background: var(--gold); color: #000; }
 <script src="mock-data.js"></script>
 <script>
 // 角色維持高清（④）：Plan A 完成後此處換成 Rive canvas
-document.getElementById('hero').innerHTML = mockAvatarSvg();
+const q = new URLSearchParams(location.search).get('art');
+if (q) document.getElementById('hero').innerHTML = `<img src="../../art/${q}" style="width:100%;display:block">`;
+else document.getElementById('hero').innerHTML = mockAvatarSvg();
 
 document.getElementById('days').innerHTML =
   MOCK.week.map(w => `<div><i class="${w.today ? 'today' : w.vol ? 'on' : ''}"></i><span>${w.wd}</span></div>`).join('');
