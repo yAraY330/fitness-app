@@ -456,7 +456,7 @@ a, button, [role="button"], input, select, textarea, label {
 .ts-done .ts-time { color: var(--success); }
 .ts-time { font-size: 40px; font-weight: 900; font-family: var(--font-display); font-variant-numeric: tabular-nums; color: var(--text); line-height: 1; letter-spacing: -1px; }
 .ts-bar-bg { height: 4px; background: var(--border); border-radius: 0; margin: 10px 0 4px; }
-.ts-bar-fg { height: 100%; background: var(--hot-grad); border-radius: 0; transition: width 0.9s linear; }
+.ts-bar-fg { height: 100%; background: var(--hot-grad); border-radius: 0; }
 .ts-presets { display: flex; gap: 6px; margin-bottom: 16px; }
 .ts-preset {
   flex: 1; padding: 8px 4px; border-radius: 0; border: 2px solid var(--border);
@@ -529,7 +529,7 @@ a, button, [role="button"], input, select, textarea, label {
 .prog-vol-row:last-child { margin-bottom: 0; }
 .prog-vol-label { width: 58px; font-size: 13px; color: var(--text-secondary); flex-shrink: 0; }
 .prog-vol-bar-bg { flex: 1; height: 8px; background: var(--border); border-radius: 0; overflow: hidden; }
-.prog-vol-bar-fg { height: 100%; border-radius: 0; transition: width 0.4s ease; }
+.prog-vol-bar-fg { height: 100%; border-radius: 0; }
 .prog-vol-num { width: 38px; text-align: right; font-size: 11px; font-weight: 800; color: var(--text-secondary); }
 
 .prog-pr-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
@@ -567,7 +567,7 @@ input[type=number] { -moz-appearance: textfield; }
 .xp-bar-fg {
   height: 100%; border-radius: 0; min-width: 4px;
   background: var(--hot-grad);
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+ 
 }
 
 .body-stats { display: flex; }
@@ -635,7 +635,7 @@ input[type=number] { -moz-appearance: textfield; }
 .part-btn-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 .part-score-num { font-size: 18px; font-weight: 900; font-family: var(--font-display); line-height: 1; }
 .part-score-bar-bg { height: 5px; background: var(--border); border-radius: 0; overflow: hidden; margin-bottom: 8px; }
-.part-score-bar-fg { height: 100%; border-radius: 0; transition: width 0.4s ease; min-width: 0; }
+.part-score-bar-fg { height: 100%; border-radius: 0; min-width: 0; }
 .part-btn-bottom { display: flex; align-items: center; gap: 6px; }
 .psel-badge { font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 0; line-height: 1.4; }
 .psel-decay { background: transparent; color: var(--gold); }
@@ -651,7 +651,7 @@ input[type=number] { -moz-appearance: textfield; }
 .psr-row:last-child { border-bottom: none; }
 .psr-name { width: 56px; font-size: 13px; font-weight: 700; flex-shrink: 0; }
 .psr-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 0; overflow: hidden; }
-.psr-bar-fg { height: 100%; border-radius: 0; min-width: 0; transition: width 0.5s cubic-bezier(0.22,1,0.36,1); }
+.psr-bar-fg { height: 100%; border-radius: 0; min-width: 0; }
 .psr-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; width: 58px; justify-content: flex-end; }
 .psr-score { font-size: 16px; font-weight: 900; font-family: var(--font-display); }
 .psr-badge { font-size: 11px; font-weight: 800; padding: 2px 5px; border-radius: 0; }
@@ -921,3 +921,20 @@ body *, body *::before, body *::after {
   border: 3px solid var(--gold); border-radius: 52% 46% 55% 47%;
 }
 @media (prefers-reduced-motion: reduce) { .hero-mark { animation: none; } }
+
+/* ── 過場動畫層（js/anim.js）：遇敵方塊、閃白、修行開始、結算視窗 ── */
+.fx-layer { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; cursor: pointer; }
+.fx-layer.fx-dim { background: rgba(10, 13, 36, 0.78); }
+.fx-grid { position: absolute; inset: 0; display: grid; }
+.fx-grid i { background: #000; transform-origin: 50% 50%; }
+.fx-flash { position: fixed; inset: 0; z-index: 950; background: #fff; opacity: 0; visibility: hidden; pointer-events: none; }
+.fx-say { position: relative; z-index: 1; font-size: 22px; padding: 14px 28px; }
+.fx-result { width: min(340px, calc(100vw - 32px)); position: relative; padding: 18px 18px 30px; line-height: 2; font-size: 16px; }
+.fx-r-title { font-size: 22px; color: var(--gold); margin-bottom: 4px; }
+.fx-r-line b { color: var(--gold); }
+.fx-r-bar { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: center; font-size: 13px; margin: 4px 0; }
+.fx-r-bar .bar { height: 10px; border: 2px solid var(--on-win); }
+.fx-r-bar .bar i { display: block; height: 100%; background: var(--gold); }
+.fx-pr, .fx-lvl { color: var(--hp); }
+.fx-result .more { position: absolute; right: 14px; bottom: 6px; animation: rpg-blink 1s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .fx-result .more { animation: none; } }

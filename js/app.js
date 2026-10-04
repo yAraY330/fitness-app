@@ -506,6 +506,7 @@ function buildSvgLineChart(series, { color = '#4ade80' } = {}) {
 // ── Navigation ─────────────────────────────────────────────────────────────
 
 const stack = [];
+let _navBack = false;   // App.back() 設 true：返回上一頁不播視窗展開（返回要快）
 let currentScreen = 'home', currentParams = {};
 
 const App = {
@@ -533,6 +534,7 @@ const App = {
     }
     if (!stack.length) return;
     const prev = stack.pop();
+    _navBack = true;
     _render(prev.screen, prev.params);
   },
   goHome() {
@@ -571,7 +573,7 @@ function _render(screen, params) {
       `<button class="end-training-btn" onclick="endTraining()">結束訓練</button>`;
   }
   if (typeof ANIM !== 'undefined') {
-    ANIM.pageEnter();
+    ANIM.pageEnter(_navBack); _navBack = false;
     if (screen === 'home') { ANIM.startBreathing(); ANIM.flushPartGlow(); }
     else ANIM.stopBreathing();
   }
@@ -1107,7 +1109,8 @@ function startTraining(date) {
   Session.start(date);
   window.currentExercises = []; window._editId = null; window._prefilled = false;
   stack.length = 0;
-  _render('selectBodyPart', { date });
+  const go = () => _render('selectBodyPart', { date });
+  if (typeof ANIM !== 'undefined') ANIM.encounter(go); else go();
 }
 
 // ── Score color helper ─────────────────────────────────────────────────────
@@ -1337,13 +1340,17 @@ function endTraining() {
 
   Session.end(); window.currentExercises = []; window._editId = null; stack.length = 0;
 
-  const xpTag = _gain > 0 ? `　+${_gain} XP` : '';
-  showToast((prNames.length
-    ? `突破紀錄！${prNames.slice(0, 2).join('・')}${prNames.length > 2 ? '…' : ''}`
-    : '訓練已儲存 ✓') + xpTag);
   if (typeof ANIM !== 'undefined') draftParts.forEach(p => ANIM.queuePartGlow(p.part));
-  if (_xpAfter.level > _xpBefore.level) setTimeout(() => showLevelUp(_xpAfter.level), 700);
-  setTimeout(() => { _render('dayDetail', { date }); }, 500);
+  const levelUp = _xpAfter.level > _xpBefore.level;
+  const after = () => {
+    _render('dayDetail', { date });
+    if (levelUp) showLevelUp(_xpAfter.level, _xpBefore.level);
+  };
+  if (typeof ANIM === 'undefined') { showToast('訓練已儲存 ✓'); after(); return; }
+  ANIM.battleResult({
+    parts: draftParts.map(p => PART_LABEL_MAP[p.part] || getPartLabel(p.part)).join('・'),
+    gain: _gain, before: _xpBefore, after: _xpAfter, levelUp, prNames,
+  }, after);
 }
 
 function _syncInputs() {
@@ -1997,16 +2004,6 @@ function onboarding(params, {title}) {
       </div>
     </div>
     <button class="btn btn-primary ob-cta" onclick="_obSave()">${isEdit ? '儲存變更' : '開始冒險'}</button>`;
-  // gsap-core: avatar bounce-in back.out(1.7) scale 0.72→1；prefers-reduced-motion 友好
-  if (typeof ANIM !== 'undefined') {
-    ANIM.pageEnter();
-    requestAnimationFrame(() => {
-      const svg = document.querySelector('#ob-preview svg');
-      if (svg && typeof gsap !== 'undefined' && !window.matchMedia('(prefers-reduced-motion:reduce)').matches) {
-        gsap.from(svg, { scale: 0.72, autoAlpha: 0, duration: 0.38, ease: 'back.out(1.7)', delay: 0.06 });
-      }
-    });
-  }
 }
 
 function _obGender(g) {
@@ -2216,7 +2213,7 @@ function avatarScreen(_, {title, right}) {
 
 // ── Level-up Modal ─────────────────────────────────────────────────────────
 
-function showLevelUp(level) {
+function showLevelUp(level, fromLevel) {
   if (document.getElementById('levelup-modal')) return;
   lockScroll();
   const a = DB.getAvatar(), st = stageFor(level);
@@ -2238,7 +2235,7 @@ function showLevelUp(level) {
   if (typeof ANIM !== 'undefined') {
     const card = el.querySelector('.levelup-card');
     card.style.animation = 'none';
-    ANIM.levelUpEnter(card);
+    ANIM.levelUpEnter(card, fromLevel || level - 1, level);
   }
 }
 
