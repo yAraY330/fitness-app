@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<!-- 開發用：把 App 放進 390×844 手機框，供 headless Chrome 截圖（headless 視窗最小寬度約 500px，直接截會被撐寬）。
+     用法：dev-frame.html?seed=1&go=avatar&params={...}&run=...  → seed=1 先注入測試資料；go=畫面名稱（App.goTo 的 screen）；run=之後執行的程式碼 -->
+<meta charset="UTF-8">
+<style>
+  html, body { margin: 0; background: #333; }
+  iframe { display: block; width: 390px; height: 844px; border: 0; background: #0a0d24; }
+</style>
+<iframe id="f"></iframe>
+<script>
+const q = new URLSearchParams(location.search);
+const f = document.getElementById('f');
+f.style.height = (q.get('h') || 844) + 'px';
+f.src = q.get('seed') ? 'dev-seed.html' : 'index.html';
+f.addEventListener('load', () => {
+  const go = q.get('go'), w = f.contentWindow;
+  // App 是頂層 const，不在 window 上，只能用 eval 取得
+  if (go) setTimeout(() => w.eval(`App.goTo(${JSON.stringify(go)}, ${q.get('params') || '{}'})`), 300);
+  // run=任意程式碼（例如開 sheet、塞動作），在 goTo 之後執行
+  if (q.get('run')) setTimeout(() => w.eval(q.get('run')), 600);
+});
+</script>

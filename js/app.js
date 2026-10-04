@@ -1,11 +1,11 @@
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const WORKOUT_TYPES = [
-  { id: 'weight',      label: '重量訓練', icon: '🏋️' },
-  { id: 'indoor_run',  label: '室內跑步', icon: '🏃' },
-  { id: 'outdoor_run', label: '室外跑步', icon: '🌳' },
-  { id: 'swim',        label: '游泳',     icon: '🏊' },
-  { id: 'bike',        label: '單車',     icon: '🚴' },
+  { id: 'weight',      label: '重量訓練', icon: 'barbell' },
+  { id: 'indoor_run',  label: '室內跑步', icon: 'run' },
+  { id: 'outdoor_run', label: '室外跑步', icon: 'trees' },
+  { id: 'swim',        label: '游泳',     icon: 'swimming' },
+  { id: 'bike',        label: '單車',     icon: 'bike' },
 ];
 
 const BODY_PARTS = [
@@ -41,6 +41,9 @@ function currentTimeStr() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
+// Tabler 圖示（assets/icons/<name>.svg），以 CSS mask 著色、跟隨文字色
+function icStyle(name) { return `-webkit-mask-image:url(assets/icons/${name}.svg);mask-image:url(assets/icons/${name}.svg)`; }
+function ic(name, cls = '') { return `<i class="ic ${cls}" style="${icStyle(name)}" aria-hidden="true"></i>`; }
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function formatDate(d) {
@@ -77,7 +80,7 @@ function unlockScroll() {
   window.scrollTo(0, _savedScrollY);
 }
 
-function getTypeInfo(id) { return WORKOUT_TYPES.find(t => t.id === id) || { label: id, icon: '' }; }
+function getTypeInfo(id) { return WORKOUT_TYPES.find(t => t.id === id) || { label: id, icon: 'barbell' }; }
 function getPartLabel(id) { return (BODY_PARTS.find(p => p.id === id) || { label: id }).label; }
 
 // Unit helpers — stores always in kg, displays in user preference
@@ -145,7 +148,7 @@ function _demoNext(img) {
 function _thumbNext(img) {
   const rest = (img.dataset.next || '').split('|').filter(Boolean);
   if (rest.length) { img.dataset.next = rest.slice(1).join('|'); img.src = rest[0]; }
-  else img.outerHTML = '<span class="ex-thumb-icon">💪</span>';
+  else img.outerHTML = '<span class="ex-thumb-icon">' + ic('barbell', 'ic-lg') + '</span>';
 }
 function _demoLoaded(img) {
   const prev = img.previousElementSibling;
@@ -170,7 +173,7 @@ function showDemo(name) {
     <div class="modal-card">
       <div class="modal-header">
         <span class="modal-title">${esc}</span>
-        <button class="modal-close" onclick="closeDemo()">✕</button>
+        <button class="modal-close" onclick="closeDemo()" aria-label="關閉">${ic('x')}</button>
       </div>
       <div class="modal-gif-wrap" id="gif-wrap">
         ${srcs.length
@@ -393,14 +396,10 @@ const RestTimer = {
     if (!btn) return;
     const s = this._remaining, m = Math.floor(s/60), sec = s%60;
     btn.classList.toggle('timer-nav-active', s > 0 || this.isRunning());
-    if (s > 0) {
-      icon.textContent = `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-      lbl.textContent = '休息中';
-    } else if (this.isRunning()) {
-      icon.textContent = '✅'; lbl.textContent = '完成！';
-    } else {
-      icon.textContent = '⏱'; lbl.textContent = '計時';
-    }
+    // 圖示是 CSS mask（不能放文字）：倒數時把秒數放在標籤，完成時換成勾勾圖示
+    const done = s === 0 && this.isRunning();
+    icon.style.cssText = icStyle(done ? 'check' : 'stopwatch');
+    lbl.textContent = s > 0 ? `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : done ? '完成！' : '計時';
   },
   _beep() {
     try {
@@ -429,8 +428,8 @@ function timerNavTap() {
   sheet.innerHTML = `
     <div class="sheet-handle"></div>
     <div class="sheet-top">
-      <span class="sheet-title">⏱ 組間計時</span>
-      <button class="sheet-close" onclick="closeTimerSheet()">✕</button>
+      <span class="sheet-title">組間休息</span>
+      <button class="sheet-close" onclick="closeTimerSheet()" aria-label="關閉">${ic('x')}</button>
     </div>
     <div id="timer-body" style="padding:0 20px 28px"></div>`;
   document.body.appendChild(overlay);
@@ -462,14 +461,14 @@ function _updateTimerSheet() {
     </div>
     <div class="ts-controls">
       <button class="ts-adj" onclick="RestTimer.add(-15)">-15s</button>
-      <button class="ts-main" onclick="${running?'RestTimer.stop()':'RestTimer.start()'}">${running?'⏹ 停止':'▶ 開始'}</button>
+      <button class="ts-main" onclick="${running?'RestTimer.stop()':'RestTimer.start()'}">${running?'停止':'開始'}</button>
       <button class="ts-adj" onclick="RestTimer.add(30)">+30s</button>
     </div>`;
 }
 
 // ── SVG Line Chart ──────────────────────────────────────────────────────────
 
-function buildSvgLineChart(series, { color = '#ff4d24' } = {}) {
+function buildSvgLineChart(series, { color = '#4ade80' } = {}) {
   const clean = series.filter(s => isFinite(s.value));
   if (clean.length < 2) return '<div style="text-align:center;color:var(--text-secondary);font-size:13px;padding:12px 0">資料不足，至少需要 2 筆記錄</div>';
   series = clean;
@@ -486,7 +485,6 @@ function buildSvgLineChart(series, { color = '#ff4d24' } = {}) {
   const fillPts = [...pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`),
     `${pts[pts.length-1].x.toFixed(1)},${(pad.t+iH).toFixed(1)}`,
     `${pts[0].x.toFixed(1)},${(pad.t+iH).toFixed(1)}`].join(' ');
-  const gid = 'cg' + color.replace('#','');
   const yLabels = [0,1,2].map(i => {
     const v = minV + (i/2)*rng, yy = pad.t + iH - (i/2)*iH;
     return `<text x="${pad.l-6}" y="${yy+4}" class="ct-lbl" text-anchor="end">${Math.round(v)}</text>`;
@@ -496,16 +494,12 @@ function buildSvgLineChart(series, { color = '#ff4d24' } = {}) {
     `<text x="${p.x.toFixed(1)}" y="${pad.t+iH+18}" class="ct-lbl" text-anchor="middle">${p.label}</text>`
   ).join('');
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">
-    <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0%" stop-color="${color}" stop-opacity="0.28"/>
-      <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
-    </linearGradient></defs>
     <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t+iH}" stroke="var(--border)" stroke-width="1"/>
     <line x1="${pad.l}" y1="${pad.t+iH}" x2="${pad.l+iW}" y2="${pad.t+iH}" stroke="var(--border)" stroke-width="1"/>
     ${yLabels}${xLabels}
-    <polygon points="${fillPts}" fill="url(#${gid})"/>
-    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    ${pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${color}" stroke="white" stroke-width="2"/>`).join('')}
+    <polygon points="${fillPts}" fill="${color}" fill-opacity="0.12"/>
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="miter"/>
+    ${pts.map(p=>`<rect x="${(p.x-3).toFixed(1)}" y="${(p.y-3).toFixed(1)}" width="6" height="6" fill="${color}"/>`).join('')}
   </svg>`;
 }
 
@@ -574,7 +568,7 @@ function _render(screen, params) {
   // 訓練模式常駐「結束訓練」按鈕（在螢幕渲染後設定，避免被覆蓋）
   if (inSession && (screen === 'selectBodyPart' || screen === 'addExercises')) {
     document.getElementById('header-right').innerHTML =
-      `<button onclick="endTraining()" style="background:var(--gold);color:#111;border:none;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:800;cursor:pointer">結束訓練</button>`;
+      `<button class="end-training-btn" onclick="endTraining()">結束訓練</button>`;
   }
   if (typeof ANIM !== 'undefined') {
     ANIM.pageEnter();
@@ -614,16 +608,44 @@ function heroAvatarSvg(a, level, es) {
 
 // ── Home ───────────────────────────────────────────────────────────────────
 
-// 衰退提示氣泡在舞台上的定位（近似對應角色部位）
-const PART_WARN_POS = {
-  shoulders: 'top:21%;right:5%',
-  chest:     'top:30%;left:6%',
-  back:      'top:40%;right:3%',
-  biceps:    'top:48%;left:3%',
-  triceps:   'top:56%;right:5%',
-  core:      'top:52%;left:7%',
-  legs:      'top:72%;left:50%;transform:translateX(-50%)',
-};
+// 對話窗旁白：依優先序挑一句（休養 > 今日已練 > 衰退中 > 快衰退 > 新手 > 一般）
+// 回傳含 <span class="hl|ok"> 的 HTML；name 已在呼叫端跳脫
+function homeNarration(name, es, todayWs) {
+  if (es.resting) return `${name}正在休養中……<br>能力值暫停衰退，好好恢復吧。`;
+  if (todayWs.length) {
+    const xp = todayWs.reduce((s, w) => s + calcWorkoutXp(w), 0);
+    return `${name}完成了今天的修行！<br>獲得經驗值 <span class="ok">+${xp}</span>。`;
+  }
+  const parts = Object.keys(es.scores).map(p => ({ p, ...es.scores[p], lost: es.scores[p].raw - es.scores[p].score }));
+  const decaying = parts.filter(s => s.lost > 0).sort((a, b) => b.lost - a.lost)[0];
+  if (decaying) {
+    const lb = PART_LABEL_MAP[decaying.p] || decaying.p;
+    return `${name}的<span class="hl">${lb}</span>已經 ${decaying.daysSince} 天沒有鍛鍊了……<br>${lb}能力下降了 <span class="hl">${decaying.lost}</span> 點！`;
+  }
+  const warn = parts.find(s => s.warning);
+  if (warn) {
+    const lb = PART_LABEL_MAP[warn.p] || warn.p;
+    return `${name}的<span class="hl">${lb}</span>快要開始退化了……<br>今天去練一下吧！`;
+  }
+  if (parts.every(s => s.raw === 0)) return `${name}的冒險即將展開。<br>選擇「開始訓練」踏出第一步吧！`;
+  return `${name}精神飽滿，<br>準備好迎接今天的修行。`;
+}
+
+// 打字機：逐字顯示（跳過 HTML 標籤），點擊對話窗直接顯示全文；離開首頁自動停止
+function typeNarration(el, html) {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { el.innerHTML = html; return; }
+  let i = 0;
+  const finish = () => { i = html.length; el.innerHTML = html; };
+  el.parentElement.addEventListener('click', finish, { once: true });
+  const tick = () => {
+    if (!el.isConnected || i >= html.length) return;
+    if (html[i] === '<') i = html.indexOf('>', i) + 1; else i++;
+    el.innerHTML = html.slice(0, i);
+    setTimeout(tick, 45);
+  };
+  tick();
+}
 
 function home(_, {title}) {
   title.textContent = '健身紀錄';
@@ -633,8 +655,7 @@ function home(_, {title}) {
     ? Math.floor((Date.now() - new Date(lastExport+'T00:00:00').getTime()) / 86400000)
     : null;
   const showBackupWarn = backupDays === null || backupDays >= 7;
-  const backupMsg = backupDays === null ? '尚未備份' : `${backupDays} 天未備份`;
-  const d = new Date(), dayNames=['日','一','二','三','四','五','六'];
+  const backupMsg = backupDays === null ? '冒險紀錄尚未備份' : `冒險紀錄已 ${backupDays} 天未備份`;
   const {weekDates, workoutDays, weekCount} = getWeekStats();
   const streak = getStreak();
   const wkLabels = ['一','二','三','四','五','六','日'];
@@ -643,94 +664,77 @@ function home(_, {title}) {
   DB.all().filter(w => w.date !== today).forEach(w => { (byDate[w.date]=byDate[w.date]||[]).push(w); });
   const recentDates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,7);
 
-  // ── 角色舞台 ──
-  const _av = DB.getAvatar();
-  let heroStage = '';
-  if (_av) {
-    const li = levelInfo(totalXp());
-    const st = stageFor(li.level);
-    const es = engineState();
-    // 衰退提示：warning = 快衰退（該練了）；decayDays>0 = 衰退中（流失提示）
-    const bubbles = [];
-    Object.keys(es.scores).forEach(p => {
-      const s = es.scores[p];
-      if (es.resting) return;
-      if (s.warning) bubbles.push({ p, cls: '', txt: `該練${PART_LABEL_MAP[p] || p}了！` });
-      else if (s.decayDays > 0 && s.raw > 0) bubbles.push({ p, cls: ' warn-decay', txt: `${PART_LABEL_MAP[p] || p} -${s.decayDays}` });
-    });
-    const bubbleHtml = bubbles.slice(0, 3)
-      .map(b => `<div class="part-warn${b.cls}" style="${PART_WARN_POS[b.p] || ''}" onclick="App.goTo('selectType',{date:'${today}'})">${b.txt}</div>`)
-      .join('');
-    heroStage = `
-    <div class="hero-stage" role="button" tabindex="0" aria-label="查看角色詳情" onclick="App.goTo('avatar',{})" onkeydown="if(event.key==='Enter')App.goTo('avatar',{})">
-      <div class="hud">
-        <div>
-          <div class="hud-name-row">
-            <span class="hud-name">${escHtml(_av.name)}</span>
-            <span class="avatar-lv-chip">Lv.${li.level}</span>
-          </div>
-          <div class="hud-stage-title">${st.title}${es.resting ? '　<span class="rest-mode-chip">🛌 休養中</span>' : ''}</div>
-        </div>
-        <div class="hud-streak">
-          <div class="hud-streak-num">${streak || 0}</div>
-          <div class="hud-streak-label">🔥 連續天數</div>
-        </div>
-      </div>
-      <div class="hero-avatar" id="hero-avatar" aria-hidden="true">${heroAvatarSvg(_av, li.level, es)}</div>
-      ${bubbleHtml}
-      <div class="hero-xp">
-        <div class="hero-xp-row">
-          <span class="hero-xp-label">XP</span>
-          <span class="hero-xp-val">${li.cur} / ${li.need}</span>
-        </div>
-        <div class="xp-bar-bg"><div class="xp-bar-fg" style="width:${Math.round(li.cur / li.need * 100)}%"></div></div>
-      </div>
-    </div>
-    <button class="start-btn" onclick="event.stopPropagation();App.goTo('selectType',{date:'${today}'})">開始訓練</button>`;
-  }
+  // _render 已保證有角色（沒有會轉去 onboarding）
+  const av = DB.getAvatar();
+  const name = escHtml(av.name);
+  const li = levelInfo(totalXp());
+  const st = stageFor(li.level);
+  const es = engineState();
+  const weakest = Object.keys(es.scores)
+    .filter(p => es.scores[p].raw > 0)
+    .sort((a, b) => es.scores[a].score - es.scores[b].score)[0];
+  const startCmd = `App.goTo('selectType',{date:'${today}'})`;
 
   document.getElementById('content').innerHTML = `
-    ${heroStage}
-    <div class="card" style="padding:14px">
-      <div class="stats-bar" style="margin-top:2px">
-        <div class="stat-item"><div class="stat-num">${d.getDate()}</div><div class="stat-label">${d.getMonth()+1}月　週${dayNames[d.getDay()]}</div></div>
-        <div class="stat-divider"></div>
-        <div class="stat-item"><div class="stat-num">${weekCount||'—'}</div><div class="stat-label">⚡ 本週天數</div></div>
-      </div>
-      <div class="week-cal">
-        ${weekDates.map((date,i) => {
-          const dt = new Date(date+'T00:00:00'), isToday = date===today, has = workoutDays.has(date);
-          return `<div class="cal-day${isToday?' cal-today':''}${has?' cal-has':''}" onclick="App.goTo('dayDetail',{date:'${date}'})">
-            <div class="cal-label">${wkLabels[i]}</div>
-            <div class="cal-num">${dt.getDate()}</div>
-            <div class="cal-dot">${has?'●':'·'}</div>
-          </div>`;
-        }).join('')}
-      </div>
-      <div style="margin-top:12px">
-        ${todayWs.length===0
-          ? `<div class="empty-state" style="padding:12px 0 4px"><div class="empty-icon">🏃</div><p>今天還沒有訓練紀錄</p></div>`
-          : todayWs.map(workoutRow).join('')}
-      </div>
+    <section class="win rpg-status">
+      <div class="name">${name}</div><div class="lv">Lv ${li.level}</div>
+      <div class="title">${st.title}</div>
+      <div class="rpg-meter"><span>EXP</span><div class="bar"><i style="width:${Math.round(li.cur / li.need * 100)}%;background:var(--gold)"></i></div><span class="v">${li.cur}/${li.need}</span></div>
+      <div class="rpg-meter"><span>耐力</span><div class="bar"><i style="width:${es.endurance.score}%;background:var(--hp)"></i></div><span class="v">${es.endurance.score}/100</span></div>
+    </section>
+
+    <section class="rpg-stage" role="button" tabindex="0" aria-label="查看能力值"
+      onclick="App.goTo('avatar',{})" onkeydown="if(event.key==='Enter')App.goTo('avatar',{})">
+      ${es.resting ? `<div class="win rpg-rest">休養中</div>` : ''}
+      <div class="win rpg-streak">連續 <b>${streak || 0}</b> 日</div>
+      <div class="rpg-hero" id="hero-avatar" aria-hidden="true">${heroAvatarSvg(av, li.level, es)}</div>
+    </section>
+
+    <section class="win rpg-msg" aria-live="polite">
+      <span id="rpg-type"></span><span class="more" aria-hidden="true">▼</span>
+    </section>
+
+    <div class="rpg-row">
+      <section class="win rpg-cmd">
+        <button class="sel" onclick="${startCmd}">開始訓練</button>
+        <button onclick="App.goTo('avatar',{})">能力值</button>
+        <button onclick="App.goTo('history',{})">冒險日誌</button>
+      </section>
+      <section class="win rpg-log">
+        本週修行 <b>${weekCount}</b>/7
+        <div class="days">
+          ${weekDates.map((date, i) => {
+            const cls = [workoutDays.has(date) ? 'on' : '', date === today ? 'today' : ''].join(' ').trim();
+            return `<button aria-label="${formatDateShort(date)}" onclick="App.goTo('dayDetail',{date:'${date}'})"><i class="${cls}"></i><span>${wkLabels[i]}</span></button>`;
+          }).join('')}
+        </div>
+        <div class="sum">弱點：<b>${weakest ? `${PART_LABEL_MAP[weakest]} ${es.scores[weakest].score}` : '—'}</b></div>
+      </section>
     </div>
+
+    <section class="card">
+      <div class="win-title">今日紀錄</div>
+      ${todayWs.length === 0
+        ? `<div class="empty-line">今天還沒有修行紀錄。</div>`
+        : todayWs.map(workoutRow).join('')}
+    </section>
     ${recentDates.length ? `
-      <div class="section-title" style="margin-top:4px">最近紀錄</div>
-      ${recentDates.map(date => `
-        <div class="card" style="padding:12px 16px;cursor:pointer" onclick="App.goTo('dayDetail',{date:'${date}'})">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <div style="font-weight:600;font-size:13px;margin-bottom:3px">${formatDateShort(date)}</div>
-              <div style="font-size:12px;color:var(--text-secondary)">${byDate[date].map(w=>getTypeInfo(w.type).icon+' '+getTypeInfo(w.type).label).join('　')}</div>
-            </div>
+      <section class="card">
+        <div class="win-title">最近紀錄</div>
+        ${recentDates.map(date => `
+          <div class="workout-row" onclick="App.goTo('dayDetail',{date:'${date}'})">
+            <div class="workout-info"><div style="color:var(--text)">${formatDateShort(date)}</div>${byDate[date].map(w => getTypeInfo(w.type).label).join('・')}</div>
             <span class="row-arrow">›</span>
-          </div>
-        </div>`).join('')}` : ''}
-    ${showBackupWarn ? `<div class="backup-warn" onclick="exportData()">⚠️ ${backupMsg}，點此立即匯出</div>` : ''}
+          </div>`).join('')}
+      </section>` : ''}
+    ${showBackupWarn ? `<div class="backup-warn" onclick="exportData()">${backupMsg}，點此立即匯出。</div>` : ''}
     <div class="data-mgmt">
-      <button class="data-btn" onclick="exportData()">📤 匯出備份</button>
-      <button class="data-btn" onclick="importData()">📥 匯入資料</button>
+      <button class="data-btn" onclick="exportData()">${ic('download', 'ic-sm')} 匯出備份</button>
+      <button class="data-btn" onclick="importData()">${ic('upload', 'ic-sm')} 匯入資料</button>
     </div>
     <p class="gym-credit">示範動作 © <a href="https://gymvisual.com/" target="_blank" rel="noopener noreferrer">Gym Visual</a></p>`;
+
+  typeNarration(document.getElementById('rpg-type'), homeNarration(name, es, todayWs));
 }
 
 function workoutRow(w) {
@@ -746,7 +750,7 @@ function workoutRow(w) {
     info = [w.distance&&`${w.distance} km`,w.duration&&`${w.duration} 分`].filter(Boolean).join('・');
   }
   return `<div class="workout-row" onclick="App.goTo('dayDetail',{date:'${w.date}'})">
-    <div class="workout-badge">${t.icon} ${t.label}</div>
+    <div class="workout-badge">${ic(t.icon, 'ic-sm')} ${t.label}</div>
     <div class="workout-info">${info}</div>
     <span class="row-arrow">›</span>
   </div>`;
@@ -761,7 +765,7 @@ const TYPE_COLORS = {indoor_run:'#f59e0b',outdoor_run:'#84cc16',swim:'#06b6d4',b
 const PART_LABEL_MAP = {chest:'胸部',back:'背部',legs:'腿部',shoulders:'肩部',biceps:'二頭',triceps:'三頭',core:'核心'};
 const TYPE_LABEL_MAP = {indoor_run:'室內跑步',outdoor_run:'室外跑步',swim:'游泳',bike:'單車'};
 
-function _wColor(w) { return w.type==='weight'?(PART_COLORS[w.bodyPart]||'#6366f1'):(TYPE_COLORS[w.type]||'#6366f1'); }
+function _wColor(w) { return w.type==='weight'?(PART_COLORS[w.bodyPart]||'var(--muted)'):(TYPE_COLORS[w.type]||'var(--muted)'); }
 
 function history(_, {title}) {
   title.textContent = '訓練日曆';
@@ -793,7 +797,7 @@ function _renderCalendar() {
   const monthCardioCount = monthWs.filter(w=>w.type!=='weight').length;
   const counts={}; monthWs.forEach(w=>{const k=w.type==='weight'?w.bodyPart:w.type;counts[k]=(counts[k]||0)+1;});
   const legend=Object.keys(counts).length
-    ?`<div class="hcal-legend">${Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<div class="hcal-legend-item"><span class="hcal-legend-dot" style="background:${PART_COLORS[k]||TYPE_COLORS[k]||'#6366f1'}"></span><span>${PART_LABEL_MAP[k]||TYPE_LABEL_MAP[k]||k}</span><span class="hcal-legend-count">${n}</span></div>`).join('')}</div>`
+    ?`<div class="hcal-legend">${Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<div class="hcal-legend-item"><span class="hcal-legend-dot" style="background:${PART_COLORS[k]||TYPE_COLORS[k]||'var(--muted)'}"></span><span>${PART_LABEL_MAP[k]||TYPE_LABEL_MAP[k]||k}</span><span class="hcal-legend-count">${n}</span></div>`).join('')}</div>`
     :'<p class="hcal-empty-msg">本月尚無訓練紀錄</p>';
   document.getElementById('content').innerHTML=`
     <div class="hcal-nav">
@@ -868,8 +872,7 @@ function progress(_, {title}) {
     const s = es.scores[p.id] || {};
     const score = Math.round(s.score || 0);
     const sc = _scoreColor(score);
-    const partColor = PART_COLORS[p.id] || 'var(--primary)';
-    const dotColor = d===null ? 'var(--border)' : d===0 ? 'var(--success)' : d<=3 ? 'var(--primary)' : d<=7 ? 'var(--gold)' : 'var(--danger)';
+    const dotColor = d===null ? 'var(--border)' : d<=7 ? 'var(--hp)' : 'var(--danger)';
     const ago = d===null ? '尚未訓練' : d===0 ? '今天' : d===1 ? '昨天' : `${d} 天前`;
     const dest = p.lastDate
       ? `App.goTo('dayDetail',{date:'${p.lastDate}'})`
@@ -882,7 +885,7 @@ function progress(_, {title}) {
           <span class="prog-part-score-inline" style="color:${sc}">${score || '—'}</span>
           <span class="prog-part-ago">${ago}</span>
         </div>
-        ${score ? `<div class="prog-mini-bar-bg"><div class="prog-mini-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${partColor}"></div></div>` : ''}
+        ${score ? `<div class="prog-mini-bar-bg"><div class="prog-mini-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${_barColor(s)}"></div></div>` : ''}
       </div>
       <span class="row-arrow">›</span>
     </div>`;
@@ -897,7 +900,7 @@ function progress(_, {title}) {
       : Math.round(weekVol[p.id]);
     return `<div class="prog-vol-row">
       <div class="prog-vol-label">${p.label}</div>
-      <div class="prog-vol-bar-bg"><div class="prog-vol-bar-fg" data-gsap="psr-bar" style="width:${pct}%;background:${PART_COLORS[p.id]||'var(--primary)'}"></div></div>
+      <div class="prog-vol-bar-bg"><div class="prog-vol-bar-fg" data-gsap="psr-bar" style="width:${pct}%;background:var(--on-win)"></div></div>
       <div class="prog-vol-num">${display}</div>
     </div>`;
   }).join('');
@@ -916,23 +919,22 @@ function progress(_, {title}) {
 
   // ── 耐力分數 ──
   const endurScore = es.endurance.score;
-  const endurColor = endurScore >= 70 ? 'var(--success)' : endurScore >= 40 ? 'var(--gold)' : 'var(--primary)';
 
   document.getElementById('content').innerHTML = `
     <div class="card prog-stat-strip">
       <div class="prog-stat-block">
         <div class="prog-stat-num">${streak}</div>
-        <div class="prog-stat-label">🔥 連續天</div>
+        <div class="prog-stat-label">連續天</div>
       </div>
       <div class="prog-stat-divider"></div>
       <div class="prog-stat-block">
         <div class="prog-stat-num">${weekCount}</div>
-        <div class="prog-stat-label">📅 本週訓練</div>
+        <div class="prog-stat-label">本週修行</div>
       </div>
       <div class="prog-stat-divider"></div>
       <div class="prog-stat-block">
         <div class="prog-stat-num">${totalSessions}</div>
-        <div class="prog-stat-label">🏋️ 累計次數</div>
+        <div class="prog-stat-label">累計次數</div>
       </div>
     </div>
     <div class="card">
@@ -942,9 +944,9 @@ function progress(_, {title}) {
     ${endurScore > 0 ? `<div class="card">
       <div class="prog-sec-title">體能耐力</div>
       <div class="prog-endurance-row">
-        <span class="prog-endur-score" style="color:${endurColor}">${endurScore}</span>
+        <span class="prog-endur-score">${endurScore}</span>
         <div style="flex:1">
-          <div class="prog-mini-bar-bg" style="height:6px"><div class="prog-mini-bar-fg" data-gsap="psr-bar" style="width:${endurScore}%;background:${endurColor}"></div></div>
+          <div class="prog-mini-bar-bg"><div class="prog-mini-bar-fg" data-gsap="psr-bar" style="width:${endurScore}%;background:var(--hp)"></div></div>
           <div style="font-size:11px;color:var(--text-secondary);margin-top:5px">近 30 天等效跑量 ${es.endurance.eqKm} km</div>
         </div>
       </div>
@@ -958,12 +960,12 @@ function progress(_, {title}) {
       ${prHtml}
     </div>
     ${runs.length >= 2 ? `<div class="card">
-      <div class="prog-sec-title">🏃 跑步趨勢 (km)</div>
-      ${buildSvgLineChart(runs.map(w=>({value:w.distance,label:w.date.slice(5)})),{color:'#f59e0b'})}
+      <div class="prog-sec-title">跑步趨勢 (km)</div>
+      ${buildSvgLineChart(runs.map(w=>({value:w.distance,label:w.date.slice(5)})),{color:'#4ade80'})}
     </div>` : ''}
     ${bikeRides.length >= 2 ? `<div class="card">
-      <div class="prog-sec-title">🚴 單車趨勢 (km)</div>
-      ${buildSvgLineChart(bikeRides.map(w=>({value:w.distance,label:w.date.slice(5)})),{color:'#8b5cf6'})}
+      <div class="prog-sec-title">單車趨勢 (km)</div>
+      ${buildSvgLineChart(bikeRides.map(w=>({value:w.distance,label:w.date.slice(5)})),{color:'#4ade80'})}
     </div>` : ''}`;
   if (typeof ANIM !== 'undefined') ANIM.animScoreBars();
 }
@@ -981,7 +983,7 @@ function dayDetail({date}, {title, right}) {
     if (w.type==='weight') {
       const exs = w.exercises || [];
       const vol = exs.reduce((s,ex)=>s+(ex.sets||[]).reduce((s2,set)=>s2+(parseFloat(set.weight)||0)*(parseInt(set.reps)||0),0),0);
-      const timeChip = w.startTime && w.endTime ? `⏱ ${w.startTime} ～ ${w.endTime}` : (w.startTime ? `⏱ ${w.startTime} 開始` : null);
+      const timeChip = w.startTime && w.endTime ? `${w.startTime} ～ ${w.endTime}` : (w.startTime ? `${w.startTime} 開始` : null);
       const chips = [
         timeChip,
         w.duration != null && `${w.duration} 分鐘`,
@@ -997,22 +999,22 @@ function dayDetail({date}, {title, right}) {
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
               <div class="exercise-block-name">${escHtml(ex.name)}</div>
               <button class="demo-tiny-btn" data-name="${escHtml(ex.name)}" onclick="showDemo(this.dataset.name)">示範</button>
-              <button class="demo-tiny-btn" data-name="${escHtml(ex.name)}" onclick="showExerciseStats(this.dataset.name)">📈 進度</button>
+              <button class="demo-tiny-btn" data-name="${escHtml(ex.name)}" onclick="showExerciseStats(this.dataset.name)">${ic('chart-line', 'ic-sm')} 進度</button>
             </div>
             <div class="sets-text">${(ex.sets||[]).map((s,i)=>`第 ${i+1} 組：${kgToDisplayUnit(s.weight,ex.unit||'kg')} ${unitLabelFor(ex.unit||'kg')} × ${s.reps||0} 下`).join('<br>')}</div>
           </div>`).join('')}`;
     } else if (w.type==='swim') {
       const tChip = w.startTime && w.endTime ? `${w.startTime} ～ ${w.endTime}` : w.startTime || null;
-      body = [tChip&&`時段：<span>⏱ ${tChip}</span>`,w.distance&&`距離：<span>${w.distance} ${w.distanceUnit}</span>`,w.laps&&`趟數：<span>${w.laps} 趟</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`]
+      body = [tChip&&`時段：<span>${tChip}</span>`,w.distance&&`距離：<span>${w.distance} ${w.distanceUnit}</span>`,w.laps&&`趟數：<span>${w.laps} 趟</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`]
         .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
     } else {
       const tChip = w.startTime && w.endTime ? `${w.startTime} ～ ${w.endTime}` : w.startTime || null;
-      body = [tChip&&`時段：<span>⏱ ${tChip}</span>`,w.distance&&`距離：<span>${w.distance} km</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`,w.notes&&`備註：<span>${escHtml(w.notes)}</span>`]
+      body = [tChip&&`時段：<span>${tChip}</span>`,w.distance&&`距離：<span>${w.distance} km</span>`,w.duration&&`時間：<span>${w.duration} 分鐘</span>`,w.notes&&`備註：<span>${escHtml(w.notes)}</span>`]
         .filter(Boolean).map(r=>`<div class="cardio-stat">${r}</div>`).join('');
     }
     return `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-size:16px;font-weight:700">${t.icon} ${t.label}</div>
+        <div style="font-size:16px">${ic(t.icon, 'ic-sm')} ${t.label}</div>
         <div style="display:flex;gap:10px">
           <button class="edit-btn" onclick="editWorkout('${w.id}','${date}')">編輯</button>
           <button class="delete-btn" onclick="deleteW('${w.id}','${date}')">刪除</button>
@@ -1021,7 +1023,7 @@ function dayDetail({date}, {title, right}) {
   }).join('');
 
   document.getElementById('content').innerHTML =
-    (ws.length ? detailHtml : `<div class="empty-state"><div class="empty-icon">📝</div><p>這天還沒有訓練紀錄</p></div>`) +
+    (ws.length ? detailHtml : `<div class="empty-state"><div class="empty-icon">${ic('notes', 'ic-lg')}</div><p>這一天的冒險日誌是空白的。</p></div>`) +
     `<button class="btn btn-outline" onclick="App.goTo('selectType',{date:'${date}'})">＋ 新增訓練</button>`;
 }
 
@@ -1061,7 +1063,7 @@ function selectType({date}, {title}) {
     <div class="type-all-list">
       ${WORKOUT_TYPES.map(t => `
         <button class="type-all-card" data-gsap="type-card" onclick="pickType('${t.id}','${date}')">
-          <span class="t-all-icon" aria-hidden="true">${t.icon}</span>
+          <span class="t-all-icon" aria-hidden="true">${ic(t.icon, 'ic-lg')}</span>
           <div class="t-all-text">
             <div class="t-all-label">${t.label}</div>
           </div>
@@ -1084,12 +1086,10 @@ function startTraining(date) {
 
 // ── Score color helper ─────────────────────────────────────────────────────
 
-function _scoreColor(score) {
-  if (score >= 70) return 'var(--success)';
-  if (score >= 40) return 'var(--primary)';
-  if (score > 0)   return 'var(--gold)';
-  return 'var(--text-secondary)';
-}
+// DESIGN.md：分數數字一律白字（0 分灰），顏色語義只留給能力值條
+function _scoreColor(score) { return score > 0 ? 'var(--on-win)' : 'var(--text-secondary)'; }
+// 能力值條：衰退中（分數已被扣）紅，其餘綠
+function _barColor(s) { return (s.raw || 0) > (s.score || 0) ? 'var(--danger)' : 'var(--hp)'; }
 
 // ── Select Body Part ───────────────────────────────────────────────────────
 
@@ -1099,7 +1099,7 @@ function selectBodyPart({date}, {title}) {
   const inSession = Session.isActive();
   const recorded = inSession ? Session.recordedParts() : new Set();
   const sessionHint = inSession
-    ? `<div class="prefill-banner" style="margin-bottom:12px">💪 訓練中${recorded.size ? `：已記錄 ${recorded.size} 個部位` : '，選一個部位開始'}。可連續記錄多個，完成後按右上「結束訓練」。</div>`
+    ? `<div class="prefill-banner" style="margin-bottom:12px">修行中${recorded.size ? `：已記錄 ${recorded.size} 個部位` : '，選一個部位開始'}。可連續記錄多個，完成後按右上「結束訓練」。</div>`
     : '';
   document.getElementById('content').innerHTML = sessionHint + `
     <div class="part-grid">
@@ -1109,7 +1109,7 @@ function selectBodyPart({date}, {title}) {
         const last = DB.lastForPart(p.id);
         const sc = _scoreColor(score);
         const done = recorded.has(p.id)
-          ? `<span class="psel-badge" style="background:var(--gold);color:#111">已記錄</span>` : '';
+          ? `<span class="psel-badge" style="background:var(--gold);color:var(--on-gold)">已記錄</span>` : '';
         const decay = s.decayDays > 0 && s.raw > 0
           ? `<span class="psel-badge psel-decay">-${s.decayDays}</span>` : '';
         const warn = s.warning
@@ -1120,7 +1120,7 @@ function selectBodyPart({date}, {title}) {
             <div class="part-score-num" style="color:${sc}">${score || '—'}</div>
           </div>
           <div class="part-score-bar-bg">
-            <div class="part-score-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${sc}"></div>
+            <div class="part-score-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${_barColor(s)}"></div>
           </div>
           <div class="part-btn-bottom">
             <div class="part-last">${last ? `上次 ${daysAgo(last.date)}` : '尚無紀錄'}</div>
@@ -1174,12 +1174,12 @@ function _renderExerciseScreen(date, part) {
   const editMode = !!window._editId;
 
   const banner = prefilled
-    ? `<div class="prefill-banner">📋 已帶入上次紀錄
+    ? `<div class="prefill-banner">已帶入上次紀錄
          <button onclick="window.currentExercises=[];window._prefilled=false;_persistDraftNow('${part}');_renderExerciseScreen('${date}','${part}')">清空</button>
        </div>` : '';
 
   const forms = exList.length === 0
-    ? `<div class="empty-state" style="padding:20px 0"><div class="empty-icon">💪</div><p>點擊「選擇動作」開始記錄</p></div>`
+    ? `<div class="empty-state" style="padding:20px 0"><div class="empty-icon">${ic('barbell', 'ic-lg')}</div><p>點擊「選擇動作」開始記錄</p></div>`
     : exList.map((ex, ei) => {
         const exUnit = ex.unit || 'kg';
         const esc = ex.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
@@ -1188,7 +1188,7 @@ function _renderExerciseScreen(date, part) {
           <div class="exercise-header" data-name="${esc}">
             <div class="ex-hd-left">
               <div class="exercise-name">${escHtml(ex.name)}</div>
-              ${pr ? `<div class="ex-pr-tag">🏆 PR ${kgToDisplayUnit(pr.weight,exUnit)} ${unitLabelFor(exUnit)} × ${pr.reps} 下</div>` : ''}
+              ${pr ? `<div class="ex-pr-tag">PR ${kgToDisplayUnit(pr.weight,exUnit)} ${unitLabelFor(exUnit)} × ${pr.reps} 下</div>` : ''}
               <div class="ex-unit-pills">
                 <button class="ex-unit-pill${exUnit==='kg'?' active':''}" onclick="_setExUnit(${ei},'kg','${date}','${part}')">kg</button>
                 <button class="ex-unit-pill${exUnit==='lbs'?' active':''}" onclick="_setExUnit(${ei},'lbs','${date}','${part}')">lbs</button>
@@ -1196,8 +1196,8 @@ function _renderExerciseScreen(date, part) {
             </div>
             <div style="display:flex;gap:6px;align-items:flex-start;padding-top:2px">
               <button class="demo-inline-btn" onclick="showDemo(this.closest('.exercise-header').dataset.name)">示範</button>
-              <button class="demo-inline-btn" onclick="showExerciseStats(this.closest('.exercise-header').dataset.name)">📈</button>
-              <button class="btn-icon" style="color:var(--danger)" onclick="removeEx(${ei},'${date}','${part}')">🗑️</button>
+              <button class="demo-inline-btn" onclick="showExerciseStats(this.closest('.exercise-header').dataset.name)" aria-label="進度">${ic('chart-line', 'ic-sm')}</button>
+              <button class="btn-icon" style="color:var(--danger)" onclick="removeEx(${ei},'${date}','${part}')" aria-label="移除動作">${ic('trash')}</button>
             </div>
           </div>
           <div class="set-col-headers">
@@ -1213,7 +1213,7 @@ function _renderExerciseScreen(date, part) {
                 value="${kgToDisplayUnit(s.weight,exUnit)}" id="w-${ei}-${si}">
               <input class="set-input" type="number" inputmode="numeric" placeholder="0" min="0"
                 value="${s.reps}" id="r-${ei}-${si}">
-              <button class="btn-icon" style="color:var(--text-secondary)" onclick="removeSet(${ei},${si},'${date}','${part}')">✕</button>
+              <button class="btn-icon" style="color:var(--text-secondary)" onclick="removeSet(${ei},${si},'${date}','${part}')" aria-label="刪除這組">${ic('x', 'ic-sm')}</button>
             </div>`).join('')}
           <button class="add-set-btn" onclick="addSet(${ei},'${date}','${part}')">＋ 新增一組</button>
         </div>`;
@@ -1313,7 +1313,7 @@ function endTraining() {
 
   const xpTag = _gain > 0 ? `　+${_gain} XP` : '';
   showToast((prNames.length
-    ? `🏆 新紀錄！${prNames.slice(0, 2).join('・')}${prNames.length > 2 ? '…' : ''}`
+    ? `突破紀錄！${prNames.slice(0, 2).join('・')}${prNames.length > 2 ? '…' : ''}`
     : '訓練已儲存 ✓') + xpTag);
   if (typeof ANIM !== 'undefined') draftParts.forEach(p => ANIM.queuePartGlow(p.part));
   if (_xpAfter.level > _xpBefore.level) setTimeout(() => showLevelUp(_xpAfter.level), 700);
@@ -1399,7 +1399,7 @@ function saveWeightWorkout(date, part) {
   const _gain = _xpAfter.total - _xpBefore.total;
   const xpTag = _gain > 0 ? `　+${_gain} XP` : '';
   showToast((prNames.length
-    ? `🏆 新紀錄！${prNames.slice(0,2).join('・')}${prNames.length > 2 ? '…' : ''}`
+    ? `突破紀錄！${prNames.slice(0,2).join('・')}${prNames.length > 2 ? '…' : ''}`
     : (wasEdit ? '已更新 ✓' : '訓練已儲存 ✓')) + xpTag);
   if (typeof ANIM !== 'undefined') ANIM.queuePartGlow(part);
   if (_xpAfter.level > _xpBefore.level) setTimeout(() => showLevelUp(_xpAfter.level), 700);
@@ -1425,10 +1425,10 @@ function openPicker(date, part) {
     <div class="sheet-handle"></div>
     <div class="sheet-top">
       <span class="sheet-title">選擇動作</span>
-      <button class="sheet-close" onclick="closePicker()">✕</button>
+      <button class="sheet-close" onclick="closePicker()" aria-label="關閉">${ic('x')}</button>
     </div>
     <div class="sheet-search-wrap">
-      <input id="picker-search" class="sheet-search-input" type="text" placeholder="🔍 搜尋動作…" autocomplete="off" oninput="_filterPicker(this.value)">
+      <input id="picker-search" class="sheet-search-input" type="text" placeholder="搜尋動作（中英文皆可）…" autocomplete="off" oninput="_filterPicker(this.value)">
     </div>
     <div id="picker-list" class="sheet-list">${_buildPickerList('')}</div>
     <div class="sheet-custom">
@@ -1479,7 +1479,7 @@ function _buildPickerList(q) {
     const thumbHtml = thumbs.length
       ? `<img class="ex-thumb" src="${thumbs[0]}" data-next="${thumbs.slice(1).join('|')}" loading="lazy" alt=""
            onerror="_thumbNext(this)">`
-      : `<span class="ex-thumb-icon">💪</span>`;
+      : `<span class="ex-thumb-icon">${ic('barbell', 'ic-lg')}</span>`;
 
     return `<div class="picker-ex-row${isAdded?' picker-ex-added':''}" data-name="${esc}">
       <div class="ex-thumb-wrap" onclick="showDemo(this.closest('.picker-ex-row').dataset.name)">
@@ -1666,7 +1666,7 @@ function showExerciseStats(name) {
     <div class="stats-pr-grid">
       <div class="stats-pr-card">
         <div class="stats-pr-val">${kgToDisplay(pr.weight)}<span class="stats-pr-unit"> ${u}</span></div>
-        <div class="stats-pr-label">🏆 最高重量</div>
+        <div class="stats-pr-label">最高重量</div>
         ${pr.date ? `<div class="stats-pr-date">${formatDateShort(pr.date)}</div>` : ''}
       </div>
       <div class="stats-pr-card">
@@ -1680,12 +1680,12 @@ function showExerciseStats(name) {
 
   const chartSection = hist.length >= 2 ? `
     <div style="margin-bottom:16px">
-      <div class="stats-chart-title">📈 最大重量 (${u})</div>
+      <div class="stats-chart-title">最大重量 (${u})</div>
       ${buildSvgLineChart(weightSeries)}
     </div>
     <div style="margin-bottom:16px">
-      <div class="stats-chart-title">📊 單次訓練量 (${u})</div>
-      ${buildSvgLineChart(volSeries, { color: '#2fd06f' })}
+      <div class="stats-chart-title">單次訓練量 (${u})</div>
+      ${buildSvgLineChart(volSeries, { color: '#4ade80' })}
     </div>` : '';
 
   const histSection = hist.length ? `
@@ -1703,7 +1703,7 @@ function showExerciseStats(name) {
     <div class="stats-card">
       <div class="modal-header" style="padding:16px 16px 12px;flex-shrink:0">
         <span class="modal-title">${escHtml(name)}</span>
-        <button class="modal-close" onclick="closeStats()">✕</button>
+        <button class="modal-close" onclick="closeStats()" aria-label="關閉">${ic('x')}</button>
       </div>
       <div class="stats-body">
         ${prSection}
@@ -1974,7 +1974,7 @@ function onboarding(params, {title}) {
         <input class="form-input" id="ob-weight" type="number" inputmode="decimal" placeholder="例：65" value="${a?.weight||''}" oninput="_obPreview()">
       </div>
     </div>
-    <button class="btn btn-primary ob-cta" onclick="_obSave()">${isEdit ? '儲存變更' : '🎮 開始養成之旅'}</button>`;
+    <button class="btn btn-primary ob-cta" onclick="_obSave()">${isEdit ? '儲存變更' : '開始冒險'}</button>`;
   // gsap-core: avatar bounce-in back.out(1.7) scale 0.72→1；prefers-reduced-motion 友好
   if (typeof ANIM !== 'undefined') {
     ANIM.pageEnter();
@@ -2010,7 +2010,7 @@ function _obSave() {
   if (!(w >= 25 && w <= 300)) { showToast('請輸入正確體重（25–300 kg）'); return; }
   const isNew = !DB.getAvatar();
   DB.saveAvatar({ name, gender: window._obG, height: h, weight: w, createdAt: DB.getAvatar()?.createdAt || Date.now() });
-  showToast(isNew ? `歡迎，${name}！開始你的旅程 🎉` : '已更新 ✓');
+  showToast(isNew ? `${name}的冒險開始了！` : '已更新 ✓');
   stack.length = 0;
   _render('avatar', {});
 }
@@ -2041,7 +2041,7 @@ function _startRest() {
   const ps = DB.getRestPeriods();
   ps.push({ start: getTodayStr() });
   DB.setRestPeriods(ps);
-  showToast('休養模式已開始 🛌');
+  showToast('進入休養，能力值暫停衰退。');
   avatarScreen({}, { title: document.getElementById('header-title'), right: document.getElementById('header-right') });
 }
 
@@ -2050,7 +2050,7 @@ function _endRest() {
   const ps = DB.getRestPeriods().map(r =>
     Engine.isInRest(today, [r]) ? { ...r, end: today } : r);
   DB.setRestPeriods(ps);
-  showToast('休養模式已結束 💪');
+  showToast('休養結束，重新踏上修行之路！');
   avatarScreen({}, { title: document.getElementById('header-title'), right: document.getElementById('header-right') });
 }
 
@@ -2076,7 +2076,7 @@ function avatarScreen(_, {title, right}) {
       ? `<span class="psr-badge psr-warn">!</span>` : '';
     return `<div class="psr-row">
       <div class="psr-name">${p.label}</div>
-      <div class="psr-bar-bg"><div class="psr-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${sc}"></div></div>
+      <div class="psr-bar-bg"><div class="psr-bar-fg" data-gsap="psr-bar" style="width:${score}%;background:${_barColor(s)}"></div></div>
       <div class="psr-right">
         <span class="psr-score" style="color:${sc}">${score}</span>
         ${decay}${warn}
@@ -2103,7 +2103,7 @@ function avatarScreen(_, {title, right}) {
   const roadmap = STAGES.map(s => {
     const unlocked = li.level >= s.min, current = s === st;
     return `<div class="stage-row${current ? ' stage-current' : ''}${unlocked ? '' : ' stage-locked'}">
-      <span class="stage-dot" style="background:${unlocked ? s.outfit : 'var(--border)'}"></span>
+      <span class="stage-dot" style="background:${unlocked ? (current ? 'var(--gold)' : 'var(--on-win)') : 'var(--border)'}"></span>
       <span class="stage-name">${s.title}</span>
       <span class="stage-lv">${unlocked ? (current ? '目前階段' : '已達成 ✓') : `Lv.${s.min} 解鎖`}</span>
     </div>`;
@@ -2116,10 +2116,10 @@ function avatarScreen(_, {title, right}) {
         <span class="avatar-name">${escHtml(a.name)}</span>
         <span class="avatar-lv-chip">Lv.${li.level}</span>
       </div>
-      <div class="avatar-stage-title" style="color:${st.outfit}">${st.title}${resting ? '　<span class="rest-mode-chip">🛌 休養中</span>' : ''}</div>
+      <div class="avatar-stage-title">${st.title}${resting ? '　<span class="rest-mode-chip">休養中</span>' : ''}</div>
       <div class="xp-bar-bg" style="margin:14px 12px 6px"><div class="xp-bar-fg" style="width:${pct}%"></div></div>
       <div class="avatar-xp-text">${li.cur} / ${li.need} XP　<span style="color:var(--text-secondary)">距 Lv.${li.level + 1} 還差 ${li.need - li.cur}</span></div>
-      ${nx ? `<div class="avatar-next-hint">下一階段：<b>${nx.title}</b>（Lv.${nx.min}）</div>` : `<div class="avatar-next-hint">已達最高階段 👑</div>`}
+      ${nx ? `<div class="avatar-next-hint">下一階段：<b>${nx.title}</b>（Lv.${nx.min}）</div>` : `<div class="avatar-next-hint">已達最高階段</div>`}
     </div>
 
     <div class="card">
@@ -2150,7 +2150,7 @@ function avatarScreen(_, {title, right}) {
         <div class="body-stat"><div class="body-stat-num">${bmi}</div><div class="body-stat-label">BMI</div></div>
       </div>
       <div class="weight-update-row${weightWarn ? ' weight-update-warn' : ''}">
-        <span class="wur-label">體重更新：${staleLabel}${weightWarn ? '　⚠' : ''}</span>
+        <span class="wur-label">體重更新：${staleLabel}${weightWarn ? '　（該更新了）' : ''}</span>
         <button class="wur-btn" onclick="_showWeightUpdate()">更新體重</button>
       </div>
       <div id="weight-input-panel" style="display:none;margin-top:10px">
@@ -2166,7 +2166,7 @@ function avatarScreen(_, {title, right}) {
       <div class="rest-toggle-row">
         <div class="rest-toggle-info">
           ${resting
-            ? `<div class="rest-active-label">🛌 休養中${curRest ? `（${curRest.start} 起）` : ''}</div>`
+            ? `<div class="rest-active-label">休養中${curRest ? `（${curRest.start} 起）` : ''}</div>`
             : `<div class="rest-inactive-label">正常訓練中</div>`}
         </div>
         ${resting
@@ -2204,11 +2204,11 @@ function showLevelUp(level) {
   el.id = 'levelup-modal'; el.className = 'modal-overlay';
   el.innerHTML = `
     <div class="levelup-card">
-      <div class="levelup-burst">🎉</div>
+      <div class="levelup-burst">LEVEL UP!</div>
       <div style="width:150px;margin:0 auto">${heroAvatarSvg(a, level, es)}</div>
       <div class="levelup-title">升級！</div>
       <div class="levelup-lv">Lv.${level}</div>
-      ${newStage ? `<div class="levelup-stage" style="color:${st.outfit}">🏅 晉升「${st.title}」！</div>` : ''}
+      ${newStage ? `<div class="levelup-stage">晉升為「${st.title}」！</div>` : ''}
       <button class="btn btn-primary" style="margin-top:16px" onclick="closeLevelUp()">太棒了！</button>
     </div>`;
   document.body.appendChild(el);

@@ -1,7 +1,13 @@
-const CACHE = 'fitness-v17';
+const CACHE = 'fitness-v18';
 const MEDIA_CACHE = 'fitness-media-v1';
 const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
-  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './manifest.json'];
+  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './manifest.json',
+  './assets/fonts/Cubic_11.woff2',
+  './assets/icons/arrow-left.svg', './assets/icons/barbell.svg', './assets/icons/bike.svg', './assets/icons/calendar.svg',
+  './assets/icons/chart-bar.svg', './assets/icons/chart-line.svg', './assets/icons/check.svg', './assets/icons/download.svg',
+  './assets/icons/home.svg', './assets/icons/notes.svg', './assets/icons/run.svg', './assets/icons/stopwatch.svg',
+  './assets/icons/swimming.svg', './assets/icons/trash.svg', './assets/icons/trees.svg', './assets/icons/upload.svg',
+  './assets/icons/user.svg', './assets/icons/x.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {}));

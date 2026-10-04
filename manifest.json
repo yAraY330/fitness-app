@@ -4,8 +4,8 @@
   "description": "記錄每日訓練的 app",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0a0b0e",
-  "theme_color": "#0a0b0e",
+  "background_color": "#0a0d24",
+  "theme_color": "#0a0d24",
   "orientation": "portrait",
   "icons": [
     {

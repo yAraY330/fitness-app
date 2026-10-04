@@ -1,6 +1,6 @@
 # CLAUDE.md — fitness-app
 
-健身紀錄 PWA（vanilla JS、無 build step、localStorage）。改版規格見 `REDESIGN_PROMPT.md`，以該文件為準。
+健身紀錄 PWA（vanilla JS、無 build step、localStorage）。視覺規格以根目錄 `DESIGN.md`（復古 RPG 狀態視窗風）為準；`REDESIGN_PROMPT.md` 為上一版（黑金屬熱血風）的歷史規格，僅供參考。
 
 ## 技能使用證據制（強制）
 
@@ -28,3 +28,5 @@
 - 中文動作對照表 `js/exercise-map.js`：新增預設動作時需同步補對照
 - dev-*.html 為開發工具頁，不加入 sw.js 快取清單
 - `design/`：設計探索區，不進 sw.js 快取、App 不引用。`design/directions/*.design.md` 為候選設計方向（DESIGN.md 格式，`npx @google/design.md lint` 驗證）；`design/mockups/*.html` 為示意圖；`design/characters/` 為角色設計（概念簡報 `*.md`、剪影比較頁）。方向定案後，定稿版寫到專案根目錄 `DESIGN.md`，作為改版唯一依據
+- `assets/`：自架靜態資源（`fonts/` Cubic 11 字型 + OFL 授權、`icons/` Tabler Icons SVG，MIT）。不用 CDN 字型/圖示，確保離線可用；新增檔案需同步加進 sw.js ASSETS
+- UI 不使用 emoji（DESIGN.md 規定），圖示用 `assets/icons/` 搭配 `.ic` CSS mask
