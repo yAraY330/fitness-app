@@ -12,6 +12,11 @@ colors:
   danger: "#ff6b6b"
   text-muted: "#aab0d0"
 typography:
+  display:
+    fontFamily: Cubic 11
+    fontSize: 40px
+    fontWeight: 400
+    lineHeight: 1.1
   headline-md:
     fontFamily: Cubic 11
     fontSize: 22px
@@ -22,9 +27,19 @@ typography:
     fontSize: 16px
     fontWeight: 400
     lineHeight: 1.6
+  title-md:
+    fontFamily: Cubic 11
+    fontSize: 18px
+    fontWeight: 400
+    lineHeight: 1.4
   label-md:
     fontFamily: Cubic 11
     fontSize: 13px
+    fontWeight: 400
+    lineHeight: 1.4
+  label-sm:
+    fontFamily: Cubic 11
+    fontSize: 11px
     fontWeight: 400
     lineHeight: 1.4
 rounded:
@@ -83,7 +98,18 @@ App 是一款你自己當主角的日式 RPG。首頁就是戰鬥前的畫面：
 
 ## Typography
 
-全站單一字體：**Cubic 11（俐方體11號）**，GitHub 開源的繁中像素字（OFL 授權），只用一種大小階層區分，不加粗。
+全站單一字體：**Cubic 11（俐方體11號）**，GitHub 開源的繁中像素字（OFL 授權），不加粗，只靠字級分階層。字級固定六級，不得使用其他尺寸：
+
+| 階層 | 尺寸 | 用途 |
+|---|---|---|
+| display | 40px | 大數字：計時器、升級 Lv、戰績統計 |
+| headline-md | 22px | 角色名字、畫面主標 |
+| title-md | 18px | 指令選單、卡片標題、次要數字 |
+| body-md | 16px | 內文、對話窗、輸入框 |
+| label-md | 13px | 說明文字、列表次要資訊 |
+| label-sm | 11px | 圖表座標、日曆星期、徽章 |
+
+（2026-10-04 修訂：原為 22/16/13 三級，實作後補上 display、title-md、label-sm；12、14 併入 13。）
 
 ## Layout
 

@@ -1465,7 +1465,7 @@ function _buildPickerList(q) {
   const filtered = qLow
     ? all.filter(n => n.toLowerCase().includes(qLow) || _exEngName(n).toLowerCase().includes(qLow))
     : all;
-  if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:14px">找不到「${q}」</div>`;
+  if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px">找不到「${q}」</div>`;
 
   const recentFiltered = !qLow ? recentNames.filter(n=>filtered.includes(n)) : [];
   const rest = filtered.filter(n=>!recentNames.includes(n)||qLow);
@@ -1673,7 +1673,7 @@ function showExerciseStats(name) {
         <div class="stats-pr-val">${pr.reps}<span class="stats-pr-unit"> 下</span></div>
         <div class="stats-pr-label">該重量最多次數</div>
       </div>
-    </div>` : '<p style="color:var(--text-secondary);font-size:14px;text-align:center;padding:12px 0">尚無個人紀錄</p>';
+    </div>` : '<p style="color:var(--text-secondary);font-size:13px;text-align:center;padding:12px 0">尚無個人紀錄</p>';
 
   const weightSeries = hist.map(h => ({ value: kgToDisplay(h.maxWeight), label: h.date.slice(5) }));
   const volSeries    = hist.map(h => ({ value: Math.round(kgToDisplay(h.totalVol)), label: h.date.slice(5) }));
