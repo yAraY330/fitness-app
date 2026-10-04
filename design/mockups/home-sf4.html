@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>示意 D｜墨戰 Ki-Ink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap">
+<style>
+/* 規格：design/directions/sf4.design.md。毛筆字 Yuji Boku（OFL）只自架用到的字（Google Fonts text= 子集） */
+@font-face { font-family: 'Yuji Boku'; src: url(fonts/yujiboku-sub.woff2) format('woff2'); font-display: swap; }
+:root {
+  --red: #b3161b; --on-red: #f1e9da; --surface: #14110f; --wall: #1c1815; --paper: #ece3d2;
+  --ink: #0b0908; --gauge: #e8b531; --danger: #e23a2f; --muted: #9c907d;
+  --brush: 'Yuji Boku', 'Noto Serif TC', serif; --serif: 'Noto Serif TC', serif;
+}
+* { box-sizing: border-box; margin: 0; }
+html { background: var(--surface); }
+body { color: var(--paper); font: 16px/1.6 var(--serif); max-width: 430px; margin: 0 auto; min-height: 100vh;
+  padding-bottom: 76px; position: relative; overflow-x: hidden; }
+
+/* 刮痕黑牆：程序化雜訊做出斑駁、少量白色刮漆（不是貼圖） */
+.wall { position: fixed; inset: 0; z-index: -1; max-width: 430px; margin: 0 auto; background: var(--surface); }
+.wall svg { width: 100%; height: 100%; display: block; }
+
+/* ── 對戰 HUD ── */
+.hud { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 14px 16px 6px; align-items: end; }
+.hud .name { font: 40px/1 var(--brush); letter-spacing: 2px; }
+.hud .title { grid-column: 1; font-size: 13px; color: var(--muted); }
+.hud .lv { grid-row: 1; grid-column: 2; font: 700 18px/1 var(--serif); color: var(--gauge); text-align: right; }
+.hud .lv b { font: 40px/1 var(--brush); }
+.gauge { grid-column: 1 / -1; display: grid; grid-template-columns: 34px 1fr 64px; gap: 8px; align-items: center; margin-top: 6px; }
+.gauge span { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; }
+.gauge .v { text-align: right; font-size: 13px; color: var(--paper); }
+/* 能力條：末端斜切、黑框，像格鬥遊戲體力條 */
+.bar { height: 14px; background: var(--ink); border: 2px solid var(--paper); clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%); position: relative; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--gauge); clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+.bar.thin { height: 9px; }
+.bar.thin i { background: var(--paper); }
+
+/* ── 舞台：圓相＋立繪 ── */
+.stage { position: relative; height: 380px; display: grid; place-items: end center; margin-top: 2px; }
+.enso { position: absolute; left: 50%; top: 18px; width: 330px; height: 330px; transform: translateX(-50%); opacity: .82; }
+.hero { position: relative; height: 340px; margin-bottom: 14px; }
+.hero img { height: 100%; width: auto; display: block; }
+.mark { position: absolute; left: 32%; top: 66%; width: 26px; height: 26px; margin: -13px 0 0 -13px; }
+.streak { position: absolute; right: 16px; top: 10px; text-align: center; line-height: 1; }
+.streak b { display: block; font: 40px/1 var(--brush); color: var(--paper); }
+.streak span { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; }
+
+/* ── 旁白條 ── */
+.narr { position: relative; margin: 0 0 12px; padding: 12px 16px 12px 16px; background: var(--wall);
+  border-top: 2px solid var(--paper); border-bottom: 2px solid var(--paper); }
+.narr .who { position: absolute; left: 12px; top: -14px; background: var(--red); color: var(--on-red);
+  font: 13px/1 var(--brush); padding: 6px 16px 6px 10px; clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+.narr p { margin-top: 6px; font-size: 16px; }
+.narr .hl { color: var(--danger); font-weight: 700; }
+
+/* ── 招式選單＋本週 ── */
+.row { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; padding: 0 16px; }
+.cmd { display: flex; flex-direction: column; gap: 2px; }
+.cmd button { all: unset; cursor: pointer; font: 22px/1.3 var(--brush); padding: 8px 18px 8px 12px; color: var(--paper); }
+.cmd button.sel { background: var(--red); color: var(--on-red); clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+.cmd button:focus-visible { outline: 2px solid var(--gauge); outline-offset: 2px; }
+.week { border-left: 2px solid var(--paper); padding-left: 12px; font-size: 13px; }
+.week h3 { font: 18px/1.2 var(--brush); font-weight: 400; margin-bottom: 8px; }
+.week h3 b { color: var(--gauge); font-weight: 400; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.days svg { width: 100%; aspect-ratio: 1; display: block; }
+.days span { font-size: 11px; color: var(--muted); }
+.weak { margin-top: 10px; color: var(--muted); }
+.weak b { color: var(--danger); font-weight: 700; }
+
+/* ── 導覽 ── */
+nav { position: fixed; left: 0; right: 0; bottom: 0; max-width: 430px; margin: 0 auto; background: var(--ink);
+  border-top: 2px solid var(--paper); display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); }
+nav a { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); font-size: 11px; font-weight: 700; text-decoration: none; padding: 4px 0 8px; }
+nav a.on { color: var(--paper); }
+nav a.on::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: 0; height: 5px;
+  background: var(--red); clip-path: polygon(2% 40%, 30% 0, 100% 20%, 96% 80%, 40% 100%, 0 90%); }
+.ic { width: 22px; height: 22px; background: currentColor; -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<!-- 牆：暖黑底＋低頻雜訊斑駁＋高頻閾值化的白色刮漆 -->
+<div class="wall" aria-hidden="true">
+  <svg viewBox="0 0 430 900" preserveAspectRatio="none">
+    <filter id="grime" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="4" seed="4"/>
+      <feColorMatrix values="0 0 0 0 0.12  0 0 0 0 0.10  0 0 0 0 0.088  0 0 0 0.9 -0.35"/>
+    </filter>
+    <filter id="scratch" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.6" numOctaves="3" seed="9"/>
+      <feColorMatrix values="0 0 0 0 0.93  0 0 0 0 0.89  0 0 0 0 0.82  0 0 0 12 -9.4"/>
+    </filter>
+    <rect width="430" height="900" fill="#14110f"/>
+    <rect width="430" height="900" filter="url(#grime)"/>
+    <rect width="430" height="900" filter="url(#scratch)" opacity=".22"/>
+  </svg>
+</div>
+
+<header class="hud">
+  <div class="name">阿力</div>
+  <div class="lv">Lv <b>3</b></div>
+  <div class="title">健身新手</div>
+  <div class="gauge"><span>EXP</span><div class="bar"><i style="width:56%"></i></div><span class="v">113/200</span></div>
+  <div class="gauge"><span>耐力</span><div class="bar thin"><i style="width:37%"></i></div><span class="v">37/100</span></div>
+</header>
+
+<section class="stage" aria-label="角色">
+  <!-- 圓相：毛筆畫的不封口圓，粗細由三層筆畫疊出、邊緣以雜訊扭曲成飛白 -->
+  <svg class="enso" viewBox="0 0 300 300" aria-hidden="true">
+    <filter id="brush" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="2" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- 筆畫：外圈淡（墨少）、內圈濃（墨多），收筆處變細並帶一道飛白 -->
+    <g filter="url(#brush)" fill="none" stroke-linecap="round">
+      <path d="M214 50 A114 114 0 1 0 250 106" stroke="#7a0d11" stroke-width="34" opacity=".55"/>
+      <path d="M210 55 A108 108 0 1 0 244 108" stroke="#b3161b" stroke-width="20"/>
+      <path d="M202 62 A100 100 0 0 0 66 120" stroke="#d0261f" stroke-width="6" opacity=".7"/>
+      <path d="M244 104 Q254 126 251 146" stroke="#b3161b" stroke-width="9"/>
+      <path d="M246 112 Q256 132 250 150" stroke="#14110f" stroke-width="2" opacity=".7"/>
+    </g>
+  </svg>
+  <div class="streak"><b>4</b><span>連續日</span></div>
+  <div class="hero">
+    <img src="../../assets/character/hero.webp" alt="角色立繪">
+    <!-- 衰退部位：紅色毛筆圈 -->
+    <svg class="mark" viewBox="0 0 40 40" aria-label="腿部正在退化">
+      <path d="M30 9 A15 15 0 1 0 34 20" fill="none" stroke="#e23a2f" stroke-width="5" stroke-linecap="round" filter="url(#brush)"/>
+    </svg>
+  </div>
+</section>
+
+<section class="narr" aria-live="polite">
+  <div class="who">旁白</div>
+  <p>阿力的<span class="hl">腿部</span>已經 12 天沒有鍛鍊了……<br>腿部能力下降了 <span class="hl">5</span> 點！</p>
+</section>
+
+<div class="row">
+  <div class="cmd">
+    <button class="sel">開始訓練</button>
+    <button>能力</button>
+    <button>冒險日誌</button>
+  </div>
+  <div class="week">
+    <h3>本週修行 <b>5</b>/7</h3>
+    <div class="days" id="days"></div>
+    <div class="weak">弱點：<b>肩 43</b></div>
+  </div>
+</div>
+
+<nav>
+  <a class="on" href="#"><i class="ic" style="-webkit-mask-image:url(../../assets/icons/home.svg);mask-image:url(../../assets/icons/home.svg)"></i>首頁</a>
+  <a href="#"><i class="ic" style="-webkit-mask-image:url(../../assets/icons/user.svg);mask-image:url(../../assets/icons/user.svg)"></i>角色</a>
+  <a href="#"><i class="ic" style="-webkit-mask-image:url(../../assets/icons/calendar.svg);mask-image:url(../../assets/icons/calendar.svg)"></i>歷史</a>
+  <a href="#"><i class="ic" style="-webkit-mask-image:url(../../assets/icons/chart-bar.svg);mask-image:url(../../assets/icons/chart-bar.svg)"></i>進度</a>
+  <a href="#"><i class="ic" style="-webkit-mask-image:url(../../assets/icons/stopwatch.svg);mask-image:url(../../assets/icons/stopwatch.svg)"></i>計時</a>
+</nav>
+
+<script>
+// 本週修行：練過的日子＝墨點（每顆用不同雜訊種子，形狀不重複）；今天＝紅圈
+const week = [1, 0, 1, 1, 1, 1, 'today'], wd = ['一','二','三','四','五','六','日'];
+document.getElementById('days').innerHTML = week.map((v, i) => {
+  const shape = v === 'today'
+    ? `<circle cx="20" cy="20" r="12" fill="none" stroke="#b3161b" stroke-width="4"/>`
+    : v ? `<circle cx="20" cy="20" r="13" fill="#ece3d2"/>` : `<circle cx="20" cy="20" r="12" fill="none" stroke="#9c907d" stroke-width="2"/>`;
+  return `<div><svg viewBox="0 0 40 40"><filter id="d${i}"><feTurbulence type="fractalNoise" baseFrequency="0.12" seed="${i + 3}"/>
+    <feDisplacementMap in="SourceGraphic" scale="6"/></filter><g filter="url(#d${i})">${shape}</g></svg><span>${wd[i]}</span></div>`;
+}).join('');
+</script>
+</body>
+</html>
