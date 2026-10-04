@@ -594,16 +594,42 @@ function engineState() {
   };
 }
 
-// 角色 SVG（新版生成器；畫風層可整組替換）
-function heroAvatarSvg(a, level, es) {
-  const scoreMap = {};
-  Object.keys(es.scores).forEach(p => { scoreMap[p] = es.scores[p].score; });
-  const dimParts = Object.keys(es.scores).filter(p => es.scores[p].decayDays > 0);
-  return buildKinniku({
-    gender: a.gender, height: a.height, weight: es.bodyWeightKg,
-    scores: scoreMap, endurance: es.endurance.score,
-    stageIndex: stageIndex(level), resting: es.resting, dimParts,
-  });
+// 角色立繪（DESIGN.md「角色」）：靜態水墨圖＋「鏡子」疊加層
+// 部位在圖上的位置（% ，依 assets/character/hero.webp 量測；換圖時要重量）
+const HERO_PART_POS = {
+  chest:     [36, 29],
+  shoulders: [15, 26],
+  biceps:    [10, 36],
+  triceps:   [90, 36],
+  back:      [77, 37],
+  core:      [50, 39],
+  legs:      [32, 66],
+};
+
+// marks=true：顯示衰退/快衰退墨圈（首頁、角色頁）；升級畫面只要乾淨的立繪
+function heroAvatarSvg(a, level, es, { marks = true } = {}) {
+  const today = getTodayStr();
+  const ring = (p, cls, label) => {
+    const [x, y] = HERO_PART_POS[p];
+    return `<button class="hero-mark ${cls}" style="left:${x}%;top:${y}%" aria-label="${label}"
+      onclick="event.stopPropagation();App.goTo('selectType',{date:'${today}'})"></button>`;
+  };
+  let overlay = '';
+  if (marks && !es.resting) {
+    Object.keys(es.scores).forEach(p => {
+      const s = es.scores[p], lb = PART_LABEL_MAP[p] || p;
+      if (!HERO_PART_POS[p]) return;
+      if (s.raw > s.score) overlay += ring(p, 'decay', `${lb}正在退化，去訓練`);
+      else if (s.warning) overlay += ring(p, 'warn', `${lb}快要退化了，去訓練`);
+    });
+  }
+  // 訓練後的閃光墨圈（anim.js flushPartGlow 依 id 找 glow-<部位>）
+  const glows = Object.keys(HERO_PART_POS).map(p => {
+    const [x, y] = HERO_PART_POS[p];
+    return `<span class="hero-glow" id="glow-${p}" style="left:${x}%;top:${y}%"></span>`;
+  }).join('');
+  return `<div class="hero-art${es.resting ? ' resting' : ''}">
+    <img src="assets/character/hero.webp" alt="" draggable="false">${glows}${overlay}</div>`;
 }
 
 // ── Home ───────────────────────────────────────────────────────────────────
@@ -1930,13 +1956,9 @@ function buildAvatarSvg(a, level) {
 
 window._obG = 'm';
 
-// 零分數的 buildKinniku（onboarding 預覽用：只依 BMI/身高做基準體型）
-function _obBuildKinniku(gender, height, weight) {
-  return buildKinniku({
-    gender, height, weight,
-    scores: { chest:0, back:0, legs:0, shoulders:0, biceps:0, triceps:0, core:0 },
-    endurance: 0, stageIndex: 0, resting: false, dimParts: []
-  });
+// onboarding 預覽：固定立繪（角色依使用者本人設計，不再依輸入的身高體重變形）
+function _obBuildKinniku() {
+  return '<div class="hero-art"><img src="assets/character/hero.webp" alt="" draggable="false"></div>';
 }
 
 function onboarding(params, {title}) {
@@ -1947,11 +1969,11 @@ function onboarding(params, {title}) {
   const h0 = a?.height || 170, w0 = a?.weight || 65;
   document.getElementById('content').innerHTML = `
     <div class="ob-showcase">
-      <div class="ob-tagline">${isEdit ? '更新你的<span class="ob-hot">角色資料</span>' : '打造你的<span class="ob-hot">筋肉人</span>分身'}</div>
+      <div class="ob-tagline">${isEdit ? '更新你的<span class="ob-hot">角色資料</span>' : '建立你的<span class="ob-hot">格鬥家</span>分身'}</div>
       <div id="ob-preview" class="ob-avatar-wrap">
         ${_obBuildKinniku(window._obG, h0, w0)}
       </div>
-      ${isEdit ? '' : '<p class="ob-hint">輸入資料即時預覽・每次訓練都讓他變強</p>'}
+      ${isEdit ? '' : '<p class="ob-hint">身高體重用來計算部位分數・每次訓練都讓他變強</p>'}
     </div>
     <div class="card">
       <div class="form-group">
@@ -2205,7 +2227,7 @@ function showLevelUp(level) {
   el.innerHTML = `
     <div class="levelup-card">
       <div class="levelup-burst">LEVEL UP!</div>
-      <div style="width:150px;margin:0 auto">${heroAvatarSvg(a, level, es)}</div>
+      <div class="levelup-hero">${heroAvatarSvg(a, level, es, { marks: false })}</div>
       <div class="levelup-title">升級！</div>
       <div class="levelup-lv">Lv.${level}</div>
       ${newStage ? `<div class="levelup-stage">晉升為「${st.title}」！</div>` : ''}
