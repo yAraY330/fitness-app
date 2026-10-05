@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<!-- 開發用：注入兩年份壓力測試資料，量測各畫面渲染時間，結果寫入 document.title（headless --dump-dom 讀取） -->
+<meta charset="UTF-8">
+<iframe id="f" style="width:390px;height:844px;border:0"></iframe>
+<script>
+const day = n => { const d = new Date(); d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const P = { chest:['槓鈴臥推','啞鈴臥推','上斜臥推'], back:['引體向上','槓鈴划船','滑輪下拉'], legs:['深蹲','硬舉','腿推'],
+  shoulders:['啞鈴肩推','側平舉'], biceps:['啞鈴彎舉'], triceps:['繩索下壓'], core:['捲腹'] };
+const parts = Object.keys(P); const ws = [];
+for (let n = 1; n < 730; n++) {
+  if (n % 2) { const part = parts[n % parts.length];
+    ws.push({ id:'p'+n, date: day(n), timestamp: Date.now(), type:'weight', bodyPart: part,
+      exercises: P[part].map(name => ({ name, unit:'kg', sets: [1,2,3,4].map(i => ({ weight: 40 + (730-n)/20 + i, reps: 8 })) })) }); }
+  if (n % 3 === 0) ws.push({ id:'r'+n, date: day(n), timestamp: Date.now(), type:'outdoor_run', distance: 5, duration: 30 });
+}
+localStorage.setItem('fitnessApp_v1', JSON.stringify({ avatar:{ name:'測', gender:'m', height:175, weight:70, createdAt: Date.now()-800*864e5 },
+  workouts: ws, custom:{}, bodyWeights:[{date:day(30),weight:70}], restPeriods:[] }));
+localStorage.setItem('lastExportDate', day(1));
+localStorage.removeItem('fitnessApp_session_v1');
+const t0 = performance.now(), f = document.getElementById('f'); f.src = 'index.html';
+f.onload = () => setTimeout(() => {
+  const w = f.contentWindow, out = ['load=' + Math.round(performance.now() - t0), 'bytes=' + localStorage.getItem('fitnessApp_v1').length, 'n=' + ws.length];
+  out.push('res:' + w.performance.getEntriesByType('resource').filter(r=>r.duration>30).map(r=>r.name.split('/').pop()+'@'+Math.round(r.startTime)+'+'+Math.round(r.duration)).join(','));
+  out.push('dcl=' + Math.round(w.performance.getEntriesByType('navigation')[0].domContentLoadedEventEnd));
+  w.eval('window.gsap && gsap.globalTimeline.timeScale(1000)');
+  for (const s of ['home','avatar','history','progress','home']) {
+    const a = performance.now(); for (let i = 0; i < 5; i++) w.eval(`App.goTo('${s}',{})`); out.push(s + '=' + ((performance.now() - a) / 5).toFixed(1));
+  }
+  w.eval("window._lc=0; const _o=DB._load.bind(DB); DB._load=()=>{window._lc++;return _o()}");
+  for (const s of ['home','avatar','history','progress']) { w._lc=0; w.eval(`App.goTo('${s}',{})`); out.push('loads_'+s+'='+w._lc); }
+  const a = performance.now(); for (let i = 0; i < 20; i++) w.eval('DB.all()'); out.push('DB.all=' + ((performance.now() - a) / 20).toFixed(2));
+  document.title = out.join(' ');
+}, 500);
+</script>

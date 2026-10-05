@@ -128,14 +128,14 @@ function _mapEntry(name) { return (window.EXERCISE_MAP || {})[name] || null; }
 function getDemoSources(name) {
   const m = _mapEntry(name), srcs = [];
   const ex = m && m.l ? EX_INDEX_BY_ID[m.l] : null;
-  if (ex && ex.gif_url) srcs.push('exercises-dataset/' + ex.gif_url);
+  if (ex && ex.m) srcs.push('exercises-dataset/videos/' + ex.m + '.gif');
   if (m && m.f) srcs.push(IMG_BASE + m.f + IMG_EXT);
   return srcs;
 }
 function getThumbSources(name) {
   const m = _mapEntry(name), srcs = [];
   const ex = m && m.l ? EX_INDEX_BY_ID[m.l] : null;
-  if (ex && ex.image) srcs.push('exercises-dataset/' + ex.image);
+  if (ex && ex.m) srcs.push('exercises-dataset/images/' + ex.m + '.jpg');
   if (m && m.f) srcs.push(IMG_BASE + m.f + IMG_EXT);
   return srcs;
 }
@@ -223,17 +223,21 @@ function getWeekStats() {
 
 const DB = {
   KEY: 'fitnessApp_v1',
+  // 記憶體快取：一次渲染會呼叫 _load 數十次（進度頁約 30 次），每次 JSON.parse 全部紀錄太慢。
+  // 只有 _save 與其他分頁的 storage 事件會更新／作廢快取；呼叫端修改回傳物件前必須自行複製（現有程式皆如此）
+  _cache: null,
   _load() {
+    if (this._cache) return this._cache;
     try {
       const d = JSON.parse(localStorage.getItem(this.KEY)) || {};
       if (!Array.isArray(d.workouts)) d.workouts = [];
       if (!d.custom || typeof d.custom !== 'object') d.custom = {};
-      return d;
+      return (this._cache = d);
     } catch { return {workouts:[],custom:{}}; }
   },
   _save(d) {
-    try { localStorage.setItem(this.KEY, JSON.stringify(d)); }
-    catch(e) { showToast('儲存失敗：裝置空間不足，請清理瀏覽器資料'); }
+    try { localStorage.setItem(this.KEY, JSON.stringify(d)); this._cache = d; return true; }
+    catch(e) { this._cache = null; showToast('儲存失敗：裝置空間不足，請清理瀏覽器資料'); return false; }
   },
   addWorkout(w)   { const d=this._load(); d.workouts.push(w); this._save(d); },
   updateWorkout(id, patch) {
@@ -1809,7 +1813,7 @@ function importData() {
         }
         // 註：PR 現由全部紀錄即時重算（computePR），匯入 workouts 後自動反映，不需合併 prs
 
-        localStorage.setItem(DB.KEY, JSON.stringify(merged));
+        if (!DB._save(merged)) return;
         showToast(`已合併 ${incoming.length} 筆 ✓`);
         setTimeout(() => App.goHome(), 300);
       } catch { showToast('檔案讀取失敗，請確認格式正確'); }
@@ -2250,6 +2254,9 @@ function closeLevelUp() {
 // ── PWA ────────────────────────────────────────────────────────────────────
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// 另一個分頁改了紀錄 → 作廢 DB 快取，下次讀取重新解析
+window.addEventListener('storage', e => { if (e.key === DB.KEY || e.key === null) DB._cache = null; });
 
 // ── Boot ────────────────────────────────────────────────────────────────────
 

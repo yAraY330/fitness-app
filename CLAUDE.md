@@ -28,5 +28,6 @@
 - 中文動作對照表 `js/exercise-map.js`：新增預設動作時需同步補對照
 - dev-*.html 為開發工具頁，不加入 sw.js 快取清單
 - `design/`：設計探索區，不進 sw.js 快取、App 不引用。`design/directions/*.design.md` 為候選設計方向（DESIGN.md 格式，用 `@google/design.md lint` 驗證。**Windows 上 `npx @google/design.md` 會卡住**：執行檔名就叫 `design.md`，被當成 Markdown 檔開啟。改為 `npm install @google/design.md` 到暫存目錄，再 `node <暫存>/node_modules/@google/design.md/dist/index.js lint <檔案>`）；`design/mockups/*.html` 為示意圖；`design/characters/` 為角色設計（概念簡報 `*.md`、剪影比較頁）。方向定案後，定稿版寫到專案根目錄 `DESIGN.md`，作為改版唯一依據
-- `assets/`：自架靜態資源（`fonts/` Cubic 11 字型 + OFL 授權、`icons/` Tabler Icons SVG，MIT、`character/hero.png` 角色立繪＝`art/char2d_v1.png` 去背版）。不用 CDN 字型/圖示，確保離線可用；新增檔案需同步加進 sw.js ASSETS
+- `assets/`：自架靜態資源（`fonts/` Cubic 11 字型 + OFL 授權、`icons/` Tabler Icons SVG，MIT、`vendor/` GSAP 與 Lenis 原檔（授權見 `vendor/LICENSES.txt`）、`character/hero.png` 角色立繪＝`art/char2d_v1.png` 去背版）。不用 CDN 字型/圖示/JS 函式庫，確保離線與弱網路下可用（升級函式庫＝下載新版原檔覆蓋並升 sw 版本）；新增檔案需同步加進 sw.js ASSETS
+- `DB._load()` 有記憶體快取：回傳的物件是共用的，**修改前必須先複製**，寫入一律走 `DB._save()`（不要直接 `localStorage.setItem(DB.KEY, …)`，會讓快取過期）
 - UI 不使用 emoji（DESIGN.md 規定），圖示用 `assets/icons/` 搭配 `.ic` CSS mask

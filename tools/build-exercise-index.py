@@ -12,13 +12,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'exercises-dataset', 'data', 'exercises.json')
 OUT = os.path.join(ROOT, 'js', 'exercise-index.js')
 
-FIELDS = ['id', 'name', 'body_part', 'equipment', 'muscle_group',
-          'secondary_muscles', 'target', 'image', 'gif_url']
+# 只留執行期實際用到的欄位（每多一欄 × 1,324 筆都會拖慢 App 啟動）。
+# 媒體路徑 images/<m>.jpg、videos/<m>.gif 共用同一段檔名，只存 m，由 app.js 組回
+FIELDS = ['id', 'name', 'secondary_muscles', 'target']
 
 with open(SRC, encoding='utf-8') as f:
     data = json.load(f)
 
-slim = [{k: e[k] for k in FIELDS} for e in data]
+def media_stem(e):
+    stem = e['image'].removeprefix('images/').removesuffix('.jpg')
+    assert e['gif_url'] == f'videos/{stem}.gif', e['id']
+    return stem
+
+slim = [{**{k: e[k] for k in FIELDS}, 'm': media_stem(e)} for e in data]
 
 header = (
     '// 由 tools/build-exercise-index.py 自動生成，勿手改。\n'
