@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!-- 像素角色實驗室：10 張基底（6 稱號 × 精實／壯碩）＋部位分數變形。
+     用法：python -m http.server 8123（在 fitness-app 根目錄）→ http://localhost:8123/design/characters/pixel/sprite-lab.html -->
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>像素角色實驗室</title>
+<style>
+@font-face { font-family: 'Cubic 11'; src: url(../../../assets/fonts/Cubic_11.woff2) format('woff2'); }
+:root { --gold: #ffd34d; --sky: #0a0d24; --white: #fff; --muted: #aab0d0; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--sky); color: var(--white); font-family: 'Cubic 11', monospace; padding: 16px; -webkit-font-smoothing: none; }
+h1 { font-size: 22px; font-weight: 400; margin-bottom: 6px; }
+h2 { font-size: 18px; font-weight: 400; margin: 24px 0 8px; }
+p.note { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.6; }
+.row { display: flex; gap: 0; flex-wrap: nowrap; align-items: flex-end; overflow-x: auto; }
+.cell { display: flex; flex-direction: column; align-items: center; }
+.cell canvas { display: block; image-rendering: pixelated; }
+.ground { height: 10px; align-self: stretch; background: #1b2150; border-top: 3px solid #2b3375; }
+.cap { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; line-height: 1.5; min-height: 34px; }
+.cap b { color: var(--gold); font-weight: 400; font-size: 13px; }
+.lab { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+.sliders { width: 300px; background: #000; border: 3px solid var(--white); border-radius: 6px; padding: 12px 14px; font-size: 13px; }
+.sliders label { display: grid; grid-template-columns: 70px 1fr 44px; gap: 8px; align-items: center; margin: 5px 0; }
+.sliders input { accent-color: var(--gold); }
+.sliders hr { border: 0; border-top: 2px solid #333; margin: 8px 0; }
+.sliders .info { color: var(--gold); margin-top: 6px; line-height: 1.6; }
+.sliders button { font: inherit; font-size: 13px; background: #000; color: var(--white); border: 2px solid var(--white); padding: 4px 8px; margin: 6px 6px 0 0; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>見習拳士 阿拳：角色模組</h1>
+<p class="note">等級→年紀（6 稱號）；體重＋訓練量→體型（精實／壯碩）；部位分數→肌肉。<br>
+比例全部來自 Dreamina 原圖，只做等比例縮放（每個稱號固定身高），不做任何拉長。1 倍顯示。</p>
+
+<h2>精實型（各部位 50 分）</h2>
+<div class="row" id="lean"></div>
+<h2>壯碩型（各部位 50 分）</h2>
+<div class="row" id="bulk"></div>
+
+<h2>自己拖拖看</h2>
+<div class="lab">
+  <div class="cell" style="min-width:340px"><canvas id="live"></canvas><div class="ground"></div><div class="cap" id="live-cap"></div></div>
+  <div class="sliders" id="sl"></div>
+</div>
+
+<script src="../../../js/sprite-data.js"></script>
+<script src="../../../js/sprite.js"></script>
+<script>
+const D = window.SPRITE_DATA;
+const PARTS = [['chest','胸'],['back','背'],['shoulders','肩'],['biceps','二頭'],['triceps','三頭'],['core','核心'],['legs','腿']];
+const all = v => Object.fromEntries(PARTS.map(([p]) => [p, v]));
+function draw(cv, base, scores) {
+  const b = Sprite.build(base, scores);
+  cv.width = b.w; cv.height = b.h;
+  cv.getContext('2d').drawImage(Sprite.toCanvas(b, base.palette), 0, 0);
+}
+['lean', 'bulk'].forEach(type => {
+  const row = document.getElementById(type);
+  D.titles.forEach((t, ti) => {
+    const cands = D.bases.filter(b => b.title === ti);
+    const base = cands.find(b => b.type === type) || cands.find(b => b.type === 'both');
+    const cell = document.createElement('div'); cell.className = 'cell';
+    cell.innerHTML = `<canvas></canvas><div class="ground"></div><div class="cap"><b>Lv${t.min} ${t.title}</b><br>${base.key}${base.type === 'both' ? '（共用）' : ''}</div>`;
+    row.appendChild(cell); draw(cell.querySelector('canvas'), base, all(50));
+  });
+});
+
+const st = { level: 10, bmi: 21, vol: 100, ...all(50) };
+const SL = [['level', '等級', 1, 40, 1], ['bmi', 'BMI', 16, 30, 0.1], ['vol', '週訓練量', 0, 400, 5]];
+const sl = document.getElementById('sl');
+sl.innerHTML = SL.map(([k, n, a, b, s]) => `<label>${n}<input type="range" min="${a}" max="${b}" step="${s}" value="${st[k]}" data-k="${k}"><span id="v-${k}">${st[k]}</span></label>`).join('')
+  + '<hr>' + PARTS.map(([p, n]) => `<label>${n}<input type="range" min="0" max="100" value="50" data-k="${p}"><span id="v-${p}">50</span></label>`).join('')
+  + '<button data-v="0">全 0</button><button data-v="50">全 50</button><button data-v="100">全 100</button><div class="info" id="info"></div>';
+const redraw = () => {
+  const base = Sprite.pick(D, { level: st.level, bmi: st.bmi, weeklyVolPerKg: st.vol });
+  draw(document.getElementById('live'), base, st);
+  const bi = Sprite.bulkIndex({ bmi: st.bmi, weeklyVolPerKg: st.vol });
+  const t = D.titles[base.title];
+  document.getElementById('info').innerHTML = `壯碩指數 ${bi.toFixed(2)} → ${bi >= 0.5 ? '壯碩型' : '精實型'}<br>Lv${st.level} → ${t.title}（${base.key}）`;
+  document.getElementById('live-cap').innerHTML = `<b>${t.title}</b>`;
+};
+sl.addEventListener('input', e => { const k = e.target.dataset.k; if (!k) return; st[k] = +e.target.value; document.getElementById('v-' + k).textContent = e.target.value; redraw(); });
+sl.addEventListener('click', e => { const v = e.target.dataset.v; if (v == null) return;
+  PARTS.forEach(([p]) => { st[p] = +v; sl.querySelector(`[data-k=${p}]`).value = v; document.getElementById('v-' + p).textContent = v; }); redraw(); });
+redraw();
+</script>
+</body>
+</html>

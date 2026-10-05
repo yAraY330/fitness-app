@@ -1,8 +1,8 @@
-const CACHE = 'fitness-v20';
+const CACHE = 'fitness-v21';
 const MEDIA_CACHE = 'fitness-media-v1';
 const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
-  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './manifest.json',
-  './assets/fonts/Cubic_11.woff2', './assets/vendor/gsap.min.js', './assets/vendor/lenis.min.js', './assets/character/hero.webp',
+  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './js/sprite.js', './js/sprite-data.js', './manifest.json',
+  './assets/fonts/Cubic_11.woff2', './assets/vendor/gsap.min.js', './assets/vendor/lenis.min.js',
   './assets/icons/arrow-left.svg', './assets/icons/barbell.svg', './assets/icons/bike.svg', './assets/icons/calendar.svg',
   './assets/icons/chart-bar.svg', './assets/icons/chart-line.svg', './assets/icons/check.svg', './assets/icons/download.svg',
   './assets/icons/home.svg', './assets/icons/notes.svg', './assets/icons/run.svg', './assets/icons/stopwatch.svg',

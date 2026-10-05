@@ -600,23 +600,35 @@ function engineState() {
   };
 }
 
-// 角色立繪（DESIGN.md「角色」）：靜態水墨圖＋「鏡子」疊加層
-// 部位在圖上的位置（% ，依 assets/character/hero.webp 量測；換圖時要重量）
-const HERO_PART_POS = {
-  chest:     [36, 29],
-  shoulders: [15, 26],
-  biceps:    [10, 36],
-  triceps:   [90, 36],
-  back:      [77, 37],
-  core:      [50, 39],
-  legs:      [32, 66],
-};
+// 角色（DESIGN.md「角色」）：像素精靈（js/sprite.js ＋ js/sprite-data.js）
+// 等級→年紀（6 稱號各一組圖）；體重＋近 4 週重訓量→體型（精實／壯碩）；部位分數→各部位肌肉
+// 比例只來自原圖（只做等比例縮放），休養中改用灰階色票
+
+// 近 4 週平均每週重訓量（舉起總公斤數）÷ 體重，供體型判斷
+function weeklyVolPerKg(bodyWeightKg) {
+  const since = toLocalStr(new Date(Date.now() - 28 * 86400000));
+  const vol = DB._load().workouts.filter(w => w.type === 'weight' && w.date >= since).reduce((s, w) =>
+    s + (w.exercises || []).reduce((s1, ex) => (ex.sets || []).reduce((s2, set) =>
+      s2 + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), s1), 0), 0);
+  return vol / 4 / Math.max(30, bodyWeightKg || 60);
+}
+
+function heroSprite(a, level, es, { heightCm, weightKg } = {}) {
+  const h = (parseFloat(heightCm || a?.height) || 170) / 100;
+  const wt = weightKg || es?.bodyWeightKg || parseFloat(a?.weight) || 60;
+  const scores = {};
+  Object.keys(es?.scores || {}).forEach(p => { scores[p] = es.scores[p].score; });
+  return Sprite.render(window.SPRITE_DATA, { level, bmi: wt / (h * h), weeklyVolPerKg: weeklyVolPerKg(wt) },
+    scores, { resting: !!es?.resting });
+}
 
 // marks=true：顯示衰退/快衰退墨圈（首頁、角色頁）；升級畫面只要乾淨的立繪
 function heroAvatarSvg(a, level, es, { marks = true } = {}) {
   const today = getTodayStr();
+  const sp = heroSprite(a, level, es);
+  const pos = sp.partPos;   // 各部位在精靈上的位置（%），隨體型與分數變動
   const ring = (p, cls, label) => {
-    const [x, y] = HERO_PART_POS[p];
+    const [x, y] = pos[p];
     return `<button class="hero-mark ${cls}" style="left:${x}%;top:${y}%" aria-label="${label}"
       onclick="event.stopPropagation();App.goTo('selectType',{date:'${today}'})"></button>`;
   };
@@ -624,18 +636,18 @@ function heroAvatarSvg(a, level, es, { marks = true } = {}) {
   if (marks && !es.resting) {
     Object.keys(es.scores).forEach(p => {
       const s = es.scores[p], lb = PART_LABEL_MAP[p] || p;
-      if (!HERO_PART_POS[p]) return;
+      if (!pos[p]) return;
       if (s.raw > s.score) overlay += ring(p, 'decay', `${lb}正在退化，去訓練`);
       else if (s.warning) overlay += ring(p, 'warn', `${lb}快要退化了，去訓練`);
     });
   }
   // 訓練後的閃光墨圈（anim.js flushPartGlow 依 id 找 glow-<部位>）
-  const glows = Object.keys(HERO_PART_POS).map(p => {
-    const [x, y] = HERO_PART_POS[p];
+  const glows = Object.keys(pos).map(p => {
+    const [x, y] = pos[p];
     return `<span class="hero-glow" id="glow-${p}" style="left:${x}%;top:${y}%"></span>`;
   }).join('');
-  return `<div class="hero-art${es.resting ? ' resting' : ''}">
-    <img src="assets/character/hero.webp" alt="" draggable="false">${glows}${overlay}</div>`;
+  return `<div class="hero-art">
+    <img src="${sp.url}" width="${sp.w}" height="${sp.h}" alt="" draggable="false">${glows}${overlay}</div>`;
 }
 
 // ── Home ───────────────────────────────────────────────────────────────────
@@ -1967,9 +1979,13 @@ function buildAvatarSvg(a, level) {
 
 window._obG = 'm';
 
-// onboarding 預覽：固定立繪（角色依使用者本人設計，不再依輸入的身高體重變形）
-function _obBuildKinniku() {
-  return '<div class="hero-art"><img src="assets/character/hero.webp" alt="" draggable="false"></div>';
+// onboarding 預覽：新角色＝Lv1 幼年；編輯時用目前等級與部位分數，身高體重即時影響體型
+function _obBuildKinniku(_g, h, w) {
+  const a = DB.getAvatar();
+  const level = a ? levelInfo(totalXp()).level : 1;
+  const es = a ? engineState() : null;
+  const sp = heroSprite(a, level, es, { heightCm: h, weightKg: w });
+  return `<div class="hero-art"><img src="${sp.url}" width="${sp.w}" height="${sp.h}" alt="" draggable="false"></div>`;
 }
 
 function onboarding(params, {title}) {

@@ -4,3 +4,7 @@ exercises-dataset/
 
 # Claude Code 專案技能（第三方工具，非應用程式碼）
 .claude/
+
+# 像素角色：比較圖（設計探索，5MB）與預覽用基底文字檔（build_base.py 可重新產生）
+design/characters/pixel/*.png
+design/characters/pixel/base_*.txt

@@ -825,7 +825,7 @@ body *, body *::before, body *::after {
 .rpg-meter .bar i { display: block; height: 100%; }
 .rpg-meter .v { text-align: right; }
 
-.rpg-stage { position: relative; height: 330px; margin: 10px 0; display: grid; place-items: end center; cursor: pointer; }
+.rpg-stage { position: relative; min-height: 330px; margin: 10px 0; display: grid; place-items: end center; cursor: pointer; }
 .rpg-stage::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
   background: var(--ground); border-top: 4px solid var(--ground-edge); }
 .rpg-hero { position: relative; z-index: 1; width: 200px; margin-bottom: 20px; }
@@ -894,18 +894,16 @@ body *, body *::before, body *::after {
 .part-btn, .type-all-card, .type-card { color: var(--on-win); }
 .time-input { max-width: none; font-size: 13px; padding: 4px; }
 
-/* ── 角色立繪（DESIGN.md「角色」）：水墨圖＋鏡子疊加層 ── */
+/* ── 角色（DESIGN.md「角色」）：像素精靈＋鏡子疊加層 ──
+   原尺寸顯示（1 格＝1px），稱號越高角色越高：場景高度跟著長，不縮放成固定高度；只有升級畫面等比例縮小 */
 .hero-art { position: relative; display: inline-block; line-height: 0; }
-.hero-art img { display: block; height: 300px; width: auto; max-height: none; margin: 0 auto; user-select: none; -webkit-user-drag: none; }
+.hero-art img { display: block; width: auto; height: auto; max-width: 100%; max-height: none; margin: 0 auto;
+  image-rendering: pixelated; user-select: none; -webkit-user-drag: none; }
 .rpg-hero { width: auto; }
 .av-svg-wrap { width: auto; text-align: center; }
-.av-svg-wrap .hero-art img { height: 280px; }
 .ob-avatar-wrap { width: auto; text-align: center; }
-.ob-avatar-wrap .hero-art img { height: 260px; }
 .levelup-hero { text-align: center; }
-.levelup-hero .hero-art img { height: 180px; }
-/* 休養中：整體轉灰 */
-.hero-art.resting img { filter: grayscale(0.85) brightness(0.85); }
+.levelup-hero .hero-art img { height: 200px; width: auto; }
 /* 部位墨圈：手繪感的不規則圓（衰退＝紅實線、快衰退＝金虛線） */
 .hero-mark {
   position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; padding: 0; cursor: pointer;
