@@ -1,4 +1,4 @@
-const CACHE = 'fitness-v22';
+const CACHE = 'fitness-v23';
 const MEDIA_CACHE = 'fitness-media-v1';
 const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
   './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './js/sprite.js', './js/sprite-data.js', './manifest.json',
@@ -10,7 +10,8 @@ const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/av
   './assets/icons/user.svg', './assets/icons/x.svg'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {}));
+  // cache:'reload'：繞過瀏覽器 HTTP 快取（GitHub Pages 會快取 10 分鐘），確保存進來的是新版檔案
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' })))).catch(() => {}));
   self.skipWaiting();
 });
 

@@ -1813,10 +1813,25 @@ function importData() {
         const existingIds = new Set(cur.workouts.map(w => w.id));
         const incoming = parsed.workouts.filter(w => w && w.id && !existingIds.has(w.id));
         const dupCount = parsed.workouts.length - incoming.length;
-        if (!incoming.length) { showToast('沒有新資料（全部重複）'); return; }
-        if (!confirm(`合併 ${incoming.length} 筆新紀錄${dupCount ? `，略過 ${dupCount} 筆重複` : ''}？`)) return;
+        // 新裝置（還沒建角色）：連角色一起還原；已有角色：保留目前角色，只合併紀錄
+        const restoreAvatar = !cur.avatar && parsed.avatar && typeof parsed.avatar === 'object';
+        // 體重：同一天以目前裝置為準；休養期間：去重合併
+        const curBW = Array.isArray(cur.bodyWeights) ? cur.bodyWeights : [];
+        const bwDates = new Set(curBW.map(e => e.date));
+        const newBW = (Array.isArray(parsed.bodyWeights) ? parsed.bodyWeights : []).filter(e => e && e.date && !bwDates.has(e.date));
+        const curRP = Array.isArray(cur.restPeriods) ? cur.restPeriods : [];
+        const rpKeys = new Set(curRP.map(r => JSON.stringify(r)));
+        const newRP = (Array.isArray(parsed.restPeriods) ? parsed.restPeriods : []).filter(r => r && !rpKeys.has(JSON.stringify(r)));
+        if (!incoming.length && !restoreAvatar && !newBW.length && !newRP.length) { showToast('沒有新資料（全部重複）'); return; }
+        const msg = restoreAvatar
+          ? `從備份還原角色「${parsed.avatar.name || ''}」與 ${incoming.length} 筆紀錄？`
+          : `合併 ${incoming.length} 筆新紀錄${dupCount ? `，略過 ${dupCount} 筆重複` : ''}${newBW.length ? `、${newBW.length} 筆體重` : ''}？`;
+        if (!confirm(msg)) return;
 
         const merged = { ...cur, workouts: [...cur.workouts, ...incoming] };
+        if (restoreAvatar) merged.avatar = parsed.avatar;
+        if (newBW.length) merged.bodyWeights = [...curBW, ...newBW].sort((a, b) => a.date.localeCompare(b.date));
+        if (newRP.length) merged.restPeriods = [...curRP, ...newRP];
 
         if (parsed.custom) {
           Object.keys(parsed.custom).forEach(part => {
@@ -1826,7 +1841,7 @@ function importData() {
         // 註：PR 現由全部紀錄即時重算（computePR），匯入 workouts 後自動反映，不需合併 prs
 
         if (!DB._save(merged)) return;
-        showToast(`已合併 ${incoming.length} 筆 ✓`);
+        showToast(restoreAvatar ? '已還原 ✓' : `已合併 ${incoming.length} 筆 ✓`);
         setTimeout(() => App.goHome(), 300);
       } catch { showToast('檔案讀取失敗，請確認格式正確'); }
     };
@@ -2023,7 +2038,8 @@ function onboarding(params, {title}) {
         <input class="form-input" id="ob-weight" type="number" inputmode="decimal" placeholder="例：65" value="${a?.weight||''}" oninput="_obPreview()">
       </div>
     </div>
-    <button class="btn btn-primary ob-cta" onclick="_obSave()">${isEdit ? '儲存變更' : '開始冒險'}</button>`;
+    <button class="btn btn-primary ob-cta" onclick="_obSave()">${isEdit ? '儲存變更' : '開始冒險'}</button>
+    ${isEdit ? '' : `<div class="data-mgmt"><button class="data-btn" onclick="importData()">${ic('upload', 'ic-sm')} 已有備份？從檔案還原</button></div>`}`;
 }
 
 function _obGender(g) {
@@ -2269,7 +2285,17 @@ function closeLevelUp() {
 
 // ── PWA ────────────────────────────────────────────────────────────────────
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+if ('serviceWorker' in navigator) {
+  // 新版 service worker 接手時自動重新整理一次（舊版是「快取優先」，不重整會一直停在舊畫面）。
+  // 第一次安裝（原本沒有 controller）不重整；訓練中的草稿存在 localStorage，重整後會還原
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;
+    reloading = true; location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 
 // 另一個分頁改了紀錄 → 作廢 DB 快取，下次讀取重新解析
 window.addEventListener('storage', e => { if (e.key === DB.KEY || e.key === null) DB._cache = null; });
