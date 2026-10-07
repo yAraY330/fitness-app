@@ -111,3 +111,16 @@ Keep exactly the same character identity as the reference image: same face shape
 ### 第三版 prompt：明確比例標記（2026-10-05）
 
 第二版 Dreamina 仍未達頭身數（實測 2.6／3.5／4.5／5.3／5.4）。第三版改寫成「身高切 N 等分＋各部位落在第幾格」，並要求只參考臉、髮、服裝，不沿用參考圖比例。頭高定義：頭髮頂（不含呆毛／髮髻）到下巴。存成 `art/pixel_A_stage<N>_v3.jpg`。
+
+## POSING 實驗：背面雙手二頭（少年期，2026-10-07）
+
+目的：先生一張，轉成像素確認姿勢在小尺寸看不看得清，再決定 posing room 做不做。
+參考圖：`art/pixel_A_stage1_v2.jpg`（App 目前 Lv5–9 用的這張）。比例 9:16。存成 `art/pixel_pose_backbi_teen.jpg`。
+
+```
+Use the reference image only for the character's identity and art style: the same boy, same dark purple-black messy spiky hair with the single cowlick sticking up on top, same white cloth bandages wrapped on both hands and wrists, same dark navy martial arts shorts with a rough beige rope belt, barefoot. He is about 13 years old with a lean, wiry teenage body and light muscle definition (not bulky).
+
+New pose: back double biceps, seen exactly from behind. We see his back, the back of his head and his hair, not his face. Both upper arms raised out to the sides at shoulder height, elbows bent at 90 degrees, forearms pointing straight up, fists closed at about the height of the top of his head, flexing both biceps. Shoulder blades squeezed, light back muscle lines visible. Perfectly symmetrical. Feet shoulder-width apart, both feet flat on the ground. The arms must not overlap the head or the body: clear empty background between the fists and the head, and between the elbows and the torso.
+
+Full body, centered, the whole figure including both elbows and both fists fits inside the frame with margin on all sides. Same 16-bit SNES JRPG pixel art style as the reference, 1-pixel dark outline, flat colors, no anti-aliasing, no blur. Single character only. Plain flat light grey background, no shadow on the ground, no text, no scenery.
+```
