@@ -239,13 +239,19 @@ const DB = {
     try { localStorage.setItem(this.KEY, JSON.stringify(d)); this._cache = d; return true; }
     catch(e) { this._cache = null; showToast('儲存失敗：裝置空間不足，請清理瀏覽器資料'); return false; }
   },
-  addWorkout(w)   { const d=this._load(); d.workouts.push(w); this._save(d); },
+  // 雲端同步：改資料的方法都要蓋時間（workout.updatedAt／profileUpdatedAt）、刪除記墓碑，並通知 Sync（js/sync.js）
+  _sync(id) { if (window.Sync) id ? Sync.touch(id) : Sync.touchProfile(); },
+  addWorkout(w)   { const d=this._load(); d.workouts.push({ ...w, updatedAt: Date.now() }); this._save(d); this._sync(w.id); },
   updateWorkout(id, patch) {
     const d = this._load();
     const i = d.workouts.findIndex(w => w.id === id);
-    if (i >= 0) { d.workouts[i] = {...d.workouts[i], ...patch}; this._save(d); }
+    if (i >= 0) { d.workouts[i] = {...d.workouts[i], ...patch, updatedAt: Date.now()}; this._save(d); this._sync(id); }
   },
-  deleteWorkout(id) { const d=this._load(); d.workouts=d.workouts.filter(w=>w.id!==id); this._save(d); },
+  deleteWorkout(id) {
+    const d=this._load(); d.workouts=d.workouts.filter(w=>w.id!==id);
+    d.deleted = { ...(d.deleted || {}), [id]: Date.now() };
+    this._save(d); this._sync(id);
+  },
   forDate(date) { return this._load().workouts.filter(w => w.date === date); },
   all()         { return this._load().workouts.sort((a,b) => b.date.localeCompare(a.date)); },
   lastForPart(part) {
@@ -257,7 +263,7 @@ const DB = {
   addCustomEx(part, name) {
     const d=this._load();
     if (!d.custom[part]) d.custom[part]=[];
-    if (!d.custom[part].includes(name)) { d.custom[part].push(name); this._save(d); }
+    if (!d.custom[part].includes(name)) { d.custom[part].push(name); d.profileUpdatedAt = Date.now(); this._save(d); this._sync(); }
   },
   getAvatar() { return this._load().avatar || null; },
   // 體重時間序列；無紀錄時以 avatar 建檔體重補一筆（建檔日），維持純函數推導
@@ -274,14 +280,16 @@ const DB = {
     d.bodyWeights.push({ date, weight });
     d.bodyWeights.sort((a, b) => a.date.localeCompare(b.date));
     if (d.avatar) d.avatar.weight = weight;
-    this._save(d);
+    d.profileUpdatedAt = Date.now();
+    this._save(d); this._sync();
   },
   getRestPeriods() { const d = this._load(); return Array.isArray(d.restPeriods) ? d.restPeriods : []; },
-  setRestPeriods(ps) { const d = this._load(); d.restPeriods = ps; this._save(d); },
+  setRestPeriods(ps) { const d = this._load(); d.restPeriods = ps; d.profileUpdatedAt = Date.now(); this._save(d); this._sync(); },
   saveAvatar(a) {
     const d = this._load();
     d.avatar = { ...(d.avatar || {}), ...a };
-    this._save(d);
+    d.profileUpdatedAt = Date.now();
+    this._save(d); this._sync();
   },
   getExerciseHistory(name) {
     return this._load().workouts
@@ -541,6 +549,15 @@ const App = {
     _navBack = true;
     _render(prev.screen, prev.params);
   },
+  // 雲端同步拉到新資料後：重畫目前畫面（編輯中、訓練中不打斷）
+  refresh() {
+    if (Session.isActive() || ['addExercises', 'addCardio', 'selectType', 'selectBodyPart'].includes(currentScreen)) return;
+    if (currentScreen === 'onboarding' && DB.getAvatar() && !stack.length) { _navBack = true; _render('home', {}); return; }
+    if (currentScreen === 'onboarding') return;
+    _navBack = true; _render(currentScreen, currentParams);
+  },
+  // 同步狀態改變：只更新首頁／建立角色頁上的同步列
+  syncChanged() { const el = document.getElementById('sync-row'); if (el) el.outerHTML = syncRowHtml(); },
   goHome() {
     if (Session.isActive()) return; // 訓練模式中不可直接回首頁，需按「結束訓練」
     if (currentScreen === 'addExercises' && (window.currentExercises||[]).length > 0) {
@@ -698,7 +715,7 @@ function home(_, {title}) {
   const backupDays = lastExport
     ? Math.floor((Date.now() - new Date(lastExport+'T00:00:00').getTime()) / 86400000)
     : null;
-  const showBackupWarn = backupDays === null || backupDays >= 7;
+  const showBackupWarn = !(window.Sync && Sync.signedIn()) && (backupDays === null || backupDays >= 7);
   const backupMsg = backupDays === null ? '冒險紀錄尚未備份' : `冒險紀錄已 ${backupDays} 天未備份`;
   const {weekDates, workoutDays, weekCount} = getWeekStats();
   const streak = getStreak();
@@ -772,6 +789,7 @@ function home(_, {title}) {
           </div>`).join('')}
       </section>` : ''}
     ${showBackupWarn ? `<div class="backup-warn" onclick="exportData()">${backupMsg}，點此立即匯出。</div>` : ''}
+    ${syncRowHtml()}
     <div class="data-mgmt">
       <button class="data-btn" onclick="exportData()">${ic('download', 'ic-sm')} 匯出備份</button>
       <button class="data-btn" onclick="importData()">${ic('upload', 'ic-sm')} 匯入資料</button>
@@ -1780,6 +1798,21 @@ function exerciseStats({name}, {title}) {
   App.back();
 }
 
+// ── 雲端同步列（首頁／建立角色頁）──────────────────────────────────────────
+
+function syncRowHtml(onboarding) {
+  if (!window.Sync || !Sync.enabled()) return '';
+  if (!Sync.signedIn()) {
+    const label = onboarding ? '用 Google 帳號登入還原' : '用 Google 帳號登入，手機電腦自動同步';
+    return `<div id="sync-row" class="data-mgmt"><button class="data-btn" onclick="Sync.signIn()">${ic('upload', 'ic-sm')} ${label}</button></div>`;
+  }
+  const s = Sync.info(), err = Sync.error();
+  const when = s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) : '同步中…';
+  const msg = err ? `同步失敗（${escHtml(String(err))}），稍後自動重試` : `已同步 ${when}`;
+  return `<div id="sync-row" class="sync-row"><span class="sync-text">${escHtml(s.email || '')}<br>${msg}</span>
+    <button class="data-btn sync-out" onclick="Sync.signOut()">登出</button></div>`;
+}
+
 // ── Data Export / Import ────────────────────────────────────────────────
 
 function exportData() {
@@ -1828,7 +1861,9 @@ function importData() {
           : `合併 ${incoming.length} 筆新紀錄${dupCount ? `，略過 ${dupCount} 筆重複` : ''}${newBW.length ? `、${newBW.length} 筆體重` : ''}？`;
         if (!confirm(msg)) return;
 
-        const merged = { ...cur, workouts: [...cur.workouts, ...incoming] };
+        const now = Date.now();
+        const merged = { ...cur, workouts: [...cur.workouts, ...incoming.map(w => ({ ...w, updatedAt: w.updatedAt || now }))] };
+        if (restoreAvatar || newBW.length || newRP.length) merged.profileUpdatedAt = now;
         if (restoreAvatar) merged.avatar = parsed.avatar;
         if (newBW.length) merged.bodyWeights = [...curBW, ...newBW].sort((a, b) => a.date.localeCompare(b.date));
         if (newRP.length) merged.restPeriods = [...curRP, ...newRP];
@@ -1841,6 +1876,7 @@ function importData() {
         // 註：PR 現由全部紀錄即時重算（computePR），匯入 workouts 後自動反映，不需合併 prs
 
         if (!DB._save(merged)) return;
+        if (window.Sync) Sync.touchAll();
         showToast(restoreAvatar ? '已還原 ✓' : `已合併 ${incoming.length} 筆 ✓`);
         setTimeout(() => App.goHome(), 300);
       } catch { showToast('檔案讀取失敗，請確認格式正確'); }
@@ -2039,6 +2075,7 @@ function onboarding(params, {title}) {
       </div>
     </div>
     <button class="btn btn-primary ob-cta" onclick="_obSave()">${isEdit ? '儲存變更' : '開始冒險'}</button>
+    ${isEdit ? '' : syncRowHtml(true)}
     ${isEdit ? '' : `<div class="data-mgmt"><button class="data-btn" onclick="importData()">${ic('upload', 'ic-sm')} 已有備份？從檔案還原</button></div>`}`;
 }
 
@@ -2321,3 +2358,5 @@ if (DB.getAvatar() && Session.isActive()) {
 } else {
   _render('home', {});
 }
+
+if (window.Sync) Sync.init();

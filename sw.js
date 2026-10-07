@@ -1,7 +1,7 @@
-const CACHE = 'fitness-v23';
+const CACHE = 'fitness-v24';
 const MEDIA_CACHE = 'fitness-media-v1';
 const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
-  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './js/sprite.js', './js/sprite-data.js', './manifest.json',
+  './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './js/sprite.js', './js/sprite-data.js', './js/sync.js', './manifest.json',
   './assets/fonts/Cubic_11.woff2', './assets/vendor/gsap.min.js', './assets/vendor/lenis.min.js',
   './assets/icons/arrow-left.svg', './assets/icons/barbell.svg', './assets/icons/bike.svg', './assets/icons/calendar.svg',
   './assets/icons/chart-bar.svg', './assets/icons/chart-line.svg', './assets/icons/check.svg', './assets/icons/download.svg',
@@ -23,6 +23,16 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
+  // Firebase 登入頁（/__/auth/）、Firestore／Google 的連線：不攔截，直接走網路
+  if (e.request.method !== 'GET' || url.includes('/__/') || url.includes('googleapis.com') || url.includes('accounts.google.com')) return;
+  // Firebase SDK（約 720KB）：只有登入的人會載入，用到才快取
+  if (url.includes('/assets/vendor/firebase/')) {
+    e.respondWith(caches.open(CACHE).then(c => c.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+      if (res && res.ok) c.put(e.request, res.clone());
+      return res;
+    }))));
+    return;
+  }
   // 示範媒體（本地資料集 GIF/縮圖與遠端示範圖）：用戶實際看過才快取（cache-on-use），
   // 1,324 個 GIF 絕不預快取
   if (url.includes('/exercises-dataset/') || url.startsWith('https://raw.githubusercontent.com')) {

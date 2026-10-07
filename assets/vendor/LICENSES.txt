@@ -1,3 +1,4 @@
 gsap.min.js  — GSAP 3.12.5，GreenSock Standard License（https://gsap.com/standard-license），授權聲明見檔頭
 lenis.min.js — Lenis 1.1.14，MIT License，Copyright (c) 2024 darkroom.engineering（https://github.com/darkroomengineering/lenis）
 來源：cdnjs / jsDelivr 原檔，未修改。自架原因：離線與弱網路下 App 啟動不依賴外部 CDN。
+firebase/firebase-{app,auth,firestore}-compat.js — Firebase JS SDK 12.19.0，Apache License 2.0，Copyright Google LLC（https://github.com/firebase/firebase-js-sdk）。來源：https://www.gstatic.com/firebasejs/12.19.0/ 原檔，未修改；只在使用者登入雲端同步時才載入

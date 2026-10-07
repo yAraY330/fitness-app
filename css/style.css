@@ -415,6 +415,9 @@ a, button, [role="button"], input, select, textarea, label {
   cursor: pointer; font-weight: 600; font-family: inherit; transition: all 0.15s;
 }
 .data-btn:active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+.sync-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--border); }
+.sync-text { flex: 1; font-size: 11px; color: var(--text-secondary); line-height: 1.6; word-break: break-all; }
+.sync-out { flex: 0 0 auto; margin: 0; }
 .gym-credit { margin: 14px 0 4px; text-align: center; font-size: 11px; color: var(--text-secondary); }
 .gym-credit a { color: var(--text-secondary); text-decoration: underline; }
 
