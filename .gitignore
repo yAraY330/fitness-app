@@ -8,3 +8,7 @@ exercises-dataset/
 # 像素角色：比較圖（設計探索，5MB）與預覽用基底文字檔（build_base.py 可重新產生）
 design/characters/pixel/*.png
 design/characters/pixel/base_*.txt
+
+# Firebase 部署快取、Python 快取
+.firebase/
+__pycache__/
