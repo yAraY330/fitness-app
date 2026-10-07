@@ -10,7 +10,14 @@
 'use strict';
 
 // Firebase 專案設定（公開資訊，非密鑰；安全性靠 firestore.rules）
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyBV2VfJqj-7GxdkZ8lHHamNutO-gMnLiAY',
+  authDomain: 'fitness-app-yaray.firebaseapp.com',
+  projectId: 'fitness-app-yaray',
+  storageBucket: 'fitness-app-yaray.firebasestorage.app',
+  messagingSenderId: '547426605410',
+  appId: '1:547426605410:web:96bb2d9bae2aef57f5f43b',
+};
 
 // ── 純函數：合併規則（tools/sync-test.js 測試）─────────────────────────────
 const ts = v => (typeof v === 'number' && isFinite(v) ? v : 0);
@@ -108,7 +115,8 @@ const ui = () => app() && app().syncChanged();
 const toast = m => root.showToast && root.showToast(m);
 
 const Sync = {
-  enabled: () => !!FIREBASE_CONFIG,
+  // 只在 Firebase 網址（與本機開發）開放登入：GitHub Pages 舊網址上 redirect 登入會被瀏覽器擋
+  enabled: () => !!FIREBASE_CONFIG && isBrowser && /(\.firebaseapp\.com|\.web\.app)$|^localhost$|^127\./.test(location.hostname),
   signedIn: () => !!(state.get() && state.get().uid),
   info: () => state.get(),
   error: () => lastError,
@@ -143,7 +151,7 @@ const Sync = {
 
   // 開 App 時：有登入過、或剛從 Google 登入頁回來，才載入 SDK
   async init() {
-    if (!isBrowser || !FIREBASE_CONFIG) return;
+    if (!this.enabled()) return;
     let pending = false; try { pending = sessionStorage.getItem('syncLoginPending') === '1'; } catch {}
     if (!this.signedIn() && !pending) return;
     try {
