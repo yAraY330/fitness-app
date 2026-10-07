@@ -24,7 +24,8 @@
 
 ## 部署
 
-- 正式網址：Firebase Hosting（`firebase deploy --only hosting,firestore:rules`，設定在 `firebase.json`／`.firebaserc`／`firestore.rules`）。部署＝公開發布，執行前必須問使用者
+- 正式網址：https://fitness-app-yaray.firebaseapp.com（`.web.app` 會自動轉過去，因為登入網域在 firebaseapp.com）。Firebase Hosting（`firebase deploy --only hosting,firestore:rules`，設定在 `firebase.json`／`.firebaserc`／`firestore.rules`）。部署＝公開發布，執行前必須問使用者
+- `firebase.json` 以專案根目錄為發布目錄，排除清單必須明確列出 `.git/**`、`.claude/**`：`**/.*` 擋不住隱藏資料夾（2026-10-07 曾因此把 .git 公開）。部署後用 curl 確認 `/.git/HEAD` 回 404
 - GitHub Pages（yaray330.github.io/fitness-app）為搬家前的舊網址，git push 後仍會自動更新
 
 ## 約定

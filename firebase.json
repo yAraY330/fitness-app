@@ -2,13 +2,38 @@
   "hosting": {
     "public": ".",
     "ignore": [
-      "firebase.json", "firestore.rules", ".firebaserc", "**/.*", "**/node_modules/**",
-      "art/**", "design/**", "tools/**", "_backup_*/**", "exercises-dataset/**",
-      "dev-*.html", "*.md"
+      ".git/**",
+      ".git",
+      ".claude/**",
+      ".claude",
+      ".firebase/**",
+      ".firebaserc",
+      ".gitignore",
+      "**/.*",
+      "firebase.json",
+      "firestore.rules",
+      "**/node_modules/**",
+      "art/**",
+      "design/**",
+      "tools/**",
+      "_backup_*/**",
+      "exercises-dataset/**",
+      "dev-*.html",
+      "*.md"
     ],
     "headers": [
-      { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
     ]
   },
-  "firestore": { "rules": "firestore.rules" }
+  "firestore": {
+    "rules": "firestore.rules"
+  }
 }

@@ -49,6 +49,10 @@
 
   <div id="toast"></div>
   <!-- GSAP 3.12.5 + Lenis 1.1.14 自架（assets/vendor/）；載入失敗時 anim.js 自動降級 -->
+  <script>
+    // 正式網址只用 firebaseapp.com：登入網域（authDomain）在這裡，web.app 上 redirect 登入會被瀏覽器擋
+    if (location.hostname === 'fitness-app-yaray.web.app') location.replace('https://fitness-app-yaray.firebaseapp.com' + location.pathname + location.search);
+  </script>
   <script src="assets/vendor/gsap.min.js"></script>
   <script src="assets/vendor/lenis.min.js"></script>
   <script src="js/exercise-index.js"></script>
