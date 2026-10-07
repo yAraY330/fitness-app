@@ -45,7 +45,7 @@ BANDS = {
     'i3':  dict(neck=80,  armpit=112, hand=145, handEnd=188, belt=143, split=193, shortsEnd=228, ankle=275, bottom=290),
     'i9':  dict(neck=82,  armpit=115, hand=165, handEnd=212, belt=160, split=215, shortsEnd=238, ankle=310, bottom=332),
     'i4':  dict(neck=72,  armpit=105, hand=145, handEnd=197, belt=152, split=205, shortsEnd=220, ankle=295, bottom=320),
-    'i10': dict(neck=68,  armpit=125, hand=162, handEnd=220, belt=160, split=240, shortsEnd=232, ankle=325, bottom=352),
+    'i10': dict(neck=68,  armpit=125, hand=162, handEnd=220, belt=160, split=224, shortsEnd=232, ankle=325, bottom=352),
     'i5':  dict(neck=82,  armpit=150, hand=180, handEnd=236, belt=177, split=250, shortsEnd=262, ankle=312, bottom=345),
 }
 K = 40

@@ -41,7 +41,7 @@ const bandT = (y, y0, y1) => (y - y0) / Math.max(1, y1 - y0);
 const TAPER = {                               // 列內漸變：三角肌中段鼓、上臂往手肘收、小腿上粗下細
   delt:  t => smooth(0, 0.55, t) * (1 - 0.3 * smooth(0.6, 1, t)),
   chest: t => smooth(0, 0.3, t),
-  arm:   t => 1 - 0.45 * smooth(0, 1, t),
+  arm:   t => 1 - 0.85 * smooth(0.25, 1, t),     // 上臂鼓、前臂收到接近原寬，接手腕繃帶不出台階
   calf:  t => 1 - 0.75 * smooth(0.15, 1, t),
 };
 const taperF = (fv, w) => 1 + (fv - 1) * w;
@@ -108,7 +108,6 @@ function build(base, scores) {
   const rT = runs(rows[Math.round((m.split + m.shortsEnd) / 2)]).filter(r => r[1] < cx);
   const THIGH_W = rT.length ? rT[rT.length - 1][1] - rT[rT.length - 1][0] + 1 : 12;
 
-  const armShift = Math.round(CHEST_W * (Math.max(f.chest, f.back) - 1) / 2 + DELT_W * (f.shoulders - 1) / 2);
   const legShift = Math.round(THIGH_W * (f.thigh - 1) / 2);
 
   const baseW = Math.max(...rows.map(r => r.length));
@@ -124,11 +123,6 @@ function build(base, scores) {
       const part = role === 'arm' ? (side < 0 ? 'biceps' : 'triceps') : ROLE_PART[role];
       if (part) { const a = acc[part] || (acc[part] = [0, 0, 0]); a[0] += x; a[1] += y; a[2]++; }
     }
-  };
-  const place = (y, row, [a, b], role, shift, side, fv) => {
-    const seg = row.slice(a, b + 1).split('');
-    const ns = resample(seg, Math.max(3, Math.round(seg.length * fv)));
-    put(y, Math.round((a + b) / 2 + OFF + shift - (ns.length - 1) / 2), ns, role, side);
   };
   const torsoRole = y => y < m.armpit + (m.belt - m.armpit) * 0.35 ? 'back' : y < m.belt ? 'core' : 'hips';
   const legRole = y => y <= m.shortsEnd ? 'thigh' : y <= m.ankle ? 'calf' : 'foot';
@@ -171,16 +165,31 @@ function build(base, scores) {
   for (let y = m.armpit; y <= m.handEnd; y++) { bL[y] = seam(rows[y], -1); bR[y] = seam(rows[y], 1); }
   fill(bL); fill(bR);
 
+  // 變形原則：每一塊都「貼著內側邊緣往外長」——軀幹以中線為準左右撐開，手臂內緣跟著軀幹外緣走，
+  // 短褲／大腿以中線切兩半各自往外長。相鄰列用同一套規則，輪廓才不會在部位交界錯位成台階
+  const torsoF = y => { const t = bandT(y, m.armpit, m.belt), up = f.chest + (f.back - f.chest) * smooth(0, 0.25, t);
+    return up + (f.core - up) * smooth(0.35, 0.9, t); };
+  const hipF = y => f.core + (f.thigh - f.core) * smooth(0, 1, bandT(y, m.belt, m.split));
+  const sideOf = r => (r[0] + r[1]) / 2 < cx ? -1 : 1;
+  // 跨過中線的片段（褲子上段、尚未分岔的兩腿）切成左右兩半
+  const halves = r => r[0] < cx && r[1] > cx ? [[r[0], cx - 1], [cx, r[1]]] : [r];
+  const ops = [], armReq = [], bodyOut = [], deltOut = [0, 0];
+  const plan = (y, row, [a, b], fv, shift) => {
+    const ns = resample(row.slice(a, b + 1).split(''), Math.max(3, Math.round((b - a + 1) * fv)));
+    return [Math.round((a + b) / 2 + OFF + shift - (ns.length - 1) / 2), ns];
+  };
+  const out2 = (y, side, v) => { const o = bodyOut[y] || (bodyOut[y] = [null, null]), k = side < 0 ? 0 : 1; o[k] = Math.max(o[k] == null ? -1e9 : o[k], v); };
+
   rows.forEach((row, y) => {
     const all = runs(row);
     if (!all.length) return;
     // 1～2 格寬的零碎片段（散髮絲、外框殘點）不參與分段，原地照貼，避免被當成手臂往外推成橫線
     const rs = y <= m.neck ? all : all.filter(r => r[1] - r[0] >= 2);
-    if (y > m.neck) all.filter(r => r[1] - r[0] < 2).forEach(r => put(y, r[0] + OFF, row.slice(r[0], r[1] + 1).split(''), null, 0));
+    if (y > m.neck) all.filter(r => r[1] - r[0] < 2).forEach(r => ops.push([y, r[0] + OFF, row.slice(r[0], r[1] + 1).split(''), null, 0]));
     if (!rs.length) return;
     const lo = rs[0][0], hi = rs[rs.length - 1][1];
     if (y <= m.neck) {                                   // 頭（含長髮）：不變形
-      put(y, lo + OFF, row.slice(lo, hi + 1).split(''), null, 0);
+      ops.push([y, lo + OFF, row.slice(lo, hi + 1).split(''), null, 0]);
       return;
     }
     if (y < m.armpit) {                                  // 肩＋上胸：三角肌｜胸｜三角肌（手臂與軀幹尚未分開）
@@ -189,32 +198,84 @@ function build(base, scores) {
       const fc = taperF(f.chest, TAPER.chest(t)), fd = taperF(f.shoulders, TAPER.delt(t));
       const cseg = resample(row.slice(cA, cB + 1).split(''), Math.round((cB - cA + 1) * fc));
       const cL = Math.round((cA + cB) / 2 + OFF - (cseg.length - 1) / 2);
-      put(y, cL, cseg, 'chest', 0);
+      ops.push([y, cL, cseg, 'chest', 0]);
       const dL = resample(row.slice(lo, cA).split(''), Math.max(2, Math.round(dw * fd)));
       const dR = resample(row.slice(cB + 1, hi + 1).split(''), Math.max(2, Math.round(dw * fd)));
-      put(y, cL - dL.length, dL, 'shoulders', -1);
-      put(y, cL + cseg.length, dR, 'shoulders', 1);
+      ops.push([y, cL - dL.length, dL, 'shoulders', -1]);
+      ops.push([y, cL + cseg.length, dR, 'shoulders', 1]);
+      deltOut[0] = (lo + OFF) - (cL - dL.length);
+      deltOut[1] = (cL + cseg.length + dR.length - 1) - (hi + OFF);
       return;
     }
     // 腋下以下：手臂／手的列範圍內，依分界欄切成「左臂｜身體｜右臂」，其餘＝軀幹或腿
-    const pieces = [];
+    const body = [];
     if (y >= m.armpit && y <= m.handEnd && (bL[y] != null || bR[y] != null)) {
       const L = bL[y] != null ? bL[y] : -1, R = bR[y] != null ? bR[y] : row.length;
-      if (L >= lo) pieces.push([[lo, L], 'armL']);
-      if (R <= hi) pieces.push([[R, hi], 'armR']);
+      armReq[y] = [L >= lo ? [lo, L] : null, R <= hi ? [R, hi] : null];
       const middle = '.'.repeat(L + 1) + row.slice(L + 1, R);   // 分界之間＝身體（可能已分成兩條腿）
-      runs(middle).filter(r => r[1] - r[0] >= 2).forEach(r => pieces.push([r, 'body']));
-    } else rs.forEach(r => pieces.push([r, 'body']));
-    const armRole = y < m.hand ? 'arm' : 'hand';
-    const armF = armRole === 'arm' ? taperF(f.arm, TAPER.arm(bandT(y, m.armpit, m.hand))) : 1;
-    pieces.forEach(([r, kind]) => {
-      if (kind === 'armL') place(y, row, r, armRole, -armShift, -1, armF);
-      else if (kind === 'armR') place(y, row, r, armRole, armShift, 1, armF);
-      else if (y < m.split) { const role = torsoRole(y); place(y, row, r, role, 0, 0, f[role]); }   // 軀幹／腰帶／短褲上段
-      else { const side = (r[0] + r[1]) / 2 < cx ? -1 : 1, role = legRole(y);                       // 褲管／小腿／腳
-        place(y, row, r, role, side * legShift, side, legF(role, y)); }
+      runs(middle).filter(r => r[1] - r[0] >= 2).forEach(r => body.push(r));
+    } else rs.forEach(r => body.push(r));
+    body.forEach(r => {
+      if (y < m.belt) {                                  // 軀幹：以中線為準撐開
+        const [x0, ns] = plan(y, row, r, torsoF(y), 0);
+        ops.push([y, x0, ns, torsoRole(y), 0]);
+        if (r[0] <= cx) out2(y, -1, (r[0] + OFF) - x0);
+        if (r[1] >= cx) out2(y, 1, (x0 + ns.length - 1) - (r[1] + OFF));
+        return;
+      }
+      halves(r).forEach(h => {
+        const side = sideOf(h), role = y < m.split ? 'hips' : legRole(y);
+        const w = h[1] - h[0] + 1;
+        const fv = y < m.split ? hipF(y) : legF(role, y);
+        // 短褲上段：貼中線往外長；分岔以下：整條腿往外移 legShift（膝蓋以下才不會跟大腿錯開）
+        const shift = y < m.split ? side * w * (fv - 1) / 2 : side * legShift;
+        const [x0, ns] = plan(y, row, h, fv, shift);
+        ops.push([y, x0, ns, role, side]);
+        out2(y, side, side < 0 ? (h[0] + OFF) - x0 : (x0 + ns.length - 1) - (h[1] + OFF));
+      });
     });
   });
+
+  // 手臂：跟著同一列軀幹外緣的位移走（上下列大範圍平滑，避免手肘折角）；手臂變粗一半往外、一半藏到身體後面；
+  // 與三角肌底端銜接
+  const armF = y => y < m.hand ? taperF(f.arm, TAPER.arm(bandT(y, m.armpit, m.hand))) : 1;
+  [0, 1].forEach(k => {
+    const side = k ? 1 : -1, ys = [], raw = [];
+    let prev = deltOut[k];
+    for (let y = m.armpit; y <= m.handEnd; y++) {
+      const r = armReq[y] && armReq[y][k]; if (!r) continue;
+      const o = bodyOut[y] && bodyOut[y][k] != null ? bodyOut[y][k] : prev; prev = o;
+      ys.push(y); raw.push(o);
+    }
+    if (!ys.length) return;
+    const grow = y => { const r = armReq[y][k]; return (r[1] - r[0] + 1) * (armF(y) - 1) / 4; };
+    const join = deltOut[k] - 2 * grow(ys[0]);         // 第一列手臂外緣＝三角肌外緣
+    const R = Math.max(4, Math.round(ys.length / 5));
+    ys.forEach((y, i) => {
+      let s = 0, n = 0; for (let j = Math.max(0, i - R); j <= Math.min(ys.length - 1, i + R); j++) { s += raw[j]; n++; }
+      const v = s / n + grow(y), t = smooth(0, 1, (y - ys[0]) / 8);
+      const r = armReq[y][k], [x0, ns] = plan(y, rows[y], r, armF(y), side * (join + (v - join) * t));
+      ops.unshift([y, x0, ns, y < m.hand ? 'arm' : 'hand', side]);   // 先畫手臂，身體疊在上面
+    });
+  });
+  ops.forEach(([y, x0, seg, role, side]) => put(y, x0, seg, role, side));
+
+  // 外輪廓去毛刺：最近鄰撐寬會讓某幾列外框比上下列多凸出一截（看起來像撕裂），
+  // 凸出超過 1 格的就削到上下列較外側的位置，並把原本的外框色搬到新邊緣（頭髮不處理）
+  const edge = (y, s) => { const r = out[y]; if (s < 0) { const i = r.findIndex(c => c !== '.'); return i < 0 ? null : i; }
+    for (let i = r.length - 1; i >= 0; i--) if (r[i] !== '.') return i; return null; };
+  for (let pass = 0; pass < 2; pass++) for (const s of [-1, 1]) {
+    const E = out.map((_, y) => edge(y, s));
+    for (let y = m.neck + 2; y < H - 1; y++) {
+      const a = E[y - 1], b = E[y + 1], e = E[y];
+      if (a == null || b == null || e == null) continue;
+      const lim = s < 0 ? Math.min(a, b) : Math.max(a, b);
+      if (s * (e - lim) <= 1) continue;
+      const c = out[y][e];
+      for (let x = e; x !== lim; x -= s) out[y][x] = '.';
+      if (out[y][lim] !== '.') out[y][lim] = c;
+    }
+  }
 
   const partPos = {};
   Object.keys(acc).forEach(p => { const [sx, sy, n] = acc[p]; partPos[p] = [+(sx / n / W * 100).toFixed(1), +(sy / n / H * 100).toFixed(1)]; });
