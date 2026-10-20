@@ -1683,9 +1683,9 @@ function _pickerDemo(el) {
   const row = el.closest('.picker-ex-row');
   if (row) showDemo(row.dataset.name);
 }
-// 器材：預設動作看對照表 e，自訂動作沒有器材資料 → 其他
-const EQUIP_FILTERS = ['槓鈴', '啞鈴', '繩索', '機械', '徒手', '其他'];
-function _exEquip(name) { return (_mapEntry(name) || {}).e || '其他'; }
+// 器材：預設動作看對照表 e；自訂動作（及歷史中不在預設清單的名稱）沒有器材資料 → 自訂
+const EQUIP_FILTERS = ['槓鈴', '啞鈴', '繩索', '機械', '徒手', '其他', '自訂'];
+function _exEquip(name) { return (_mapEntry(name) || {}).e || '自訂'; }
 function _eqBarHtml() {
   return ['', ...EQUIP_FILTERS].map(e =>
     `<button class="unit-pill picker-eq-pill${_peq === e ? ' active' : ''}" aria-pressed="${_peq === e}" onclick="_setPickerEq('${e}')">${e || '全部'}</button>`).join('');

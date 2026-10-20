@@ -253,8 +253,8 @@ a, button, [role="button"], input, select, textarea, label {
 .picker-ex-act { width: 44px; height: 44px; flex-shrink: 0; align-self: center; margin-right: 6px; color: var(--text-secondary); }
 .picker-ex-del { color: var(--danger); }
 .picker-ex-fav.is-on { color: var(--primary); }
-/* 器材篩選：沿用 .unit-pill 樣式，七顆平分一排（不用橫向捲動，避免後面的按鈕被藏起來） */
-.picker-eq-bar { display: flex; gap: 5px; padding: 0 16px 10px; flex-shrink: 0; }
+/* 器材篩選：沿用 .unit-pill 樣式，八顆平分一排（不用橫向捲動，避免後面的按鈕被藏起來） */
+.picker-eq-bar { display: flex; gap: 4px; padding: 0 16px 10px; flex-shrink: 0; }
 .picker-eq-bar .picker-eq-pill { flex: 1 1 0; min-width: 0; padding: 6px 0; white-space: nowrap; text-align: center; }
 .picker-ex-fav + .picker-ex-del { margin-left: -6px; }  /* 兩個按鈕並排時收緊間距 */
 
