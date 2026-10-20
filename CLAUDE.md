@@ -32,7 +32,7 @@
 
 - 資料原則：XP 與部位分數一律由全部紀錄純函數重算，不存累計值
 - `exercises-dataset/` 不進 git（媒體 © Gym visual）；精簡索引 `js/exercise-index.js` 由 `tools/build-exercise-index.py` 生成
-- 中文動作對照表 `js/exercise-map.js`：新增預設動作時需同步補對照
+- 預設動作 `PRESET_GROUPS`（`js/app.js`，部位 → 動作類型 → 動作，選動作清單依此分段）＋中文動作對照表 `js/exercise-map.js`（`l`／`f` 示意圖、`e` 器材分類）：新增預設動作時兩邊都要補；不得改名，換部位要記進 `tools/check-exercise-map.js` 的 `MOVED`
 - dev-*.html 為開發工具頁，不加入 sw.js 快取清單
 - `design/`：設計探索區，不進 sw.js 快取、App 不引用。`design/directions/*.design.md` 為候選設計方向（DESIGN.md 格式，用 `@google/design.md lint` 驗證。**Windows 上 `npx @google/design.md` 會卡住**：執行檔名就叫 `design.md`，被當成 Markdown 檔開啟。改為 `npm install @google/design.md` 到暫存目錄，再 `node <暫存>/node_modules/@google/design.md/dist/index.js lint <檔案>`）；`design/mockups/*.html` 為示意圖；`design/characters/` 為角色設計（概念簡報 `*.md`、剪影比較頁）。方向定案後，定稿版寫到專案根目錄 `DESIGN.md`，作為改版唯一依據
 - `assets/`：自架靜態資源（`fonts/` Cubic 11 字型 + OFL 授權、`icons/` Tabler Icons SVG，MIT、`vendor/` GSAP、Lenis、Firebase（`vendor/firebase/`，只在登入後載入）原檔（授權見 `vendor/LICENSES.txt`）、`character/hero.webp` 舊水墨立繪，已不使用）。不用 CDN 字型/圖示/JS 函式庫，確保離線與弱網路下可用（升級函式庫＝下載新版原檔覆蓋並升 sw 版本）；新增檔案需同步加進 sw.js ASSETS

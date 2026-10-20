@@ -18,15 +18,65 @@ const BODY_PARTS = [
   { id: 'core',      label: '核心' },
 ];
 
-const PRESET_EXERCISES = {
-  chest: ['啞鈴臥推','槓鈴臥推','上斜啞鈴臥推','上斜槓鈴臥推','下斜啞鈴臥推','下斜槓鈴臥推','啞鈴飛鳥','上斜啞鈴飛鳥','下斜啞鈴飛鳥','蝴蝶機夾胸','繩索夾胸','上斜繩索飛鳥','下斜繩索飛鳥','伏地挺身','寬距伏地挺身','鑽石伏地挺身','雙槓撐體（胸）','史密斯機臥推','胸推機','啞鈴對握臥推','寬握槓鈴臥推','地板臥推','單臂啞鈴臥推','上斜胸推機','下斜胸推機','上斜史密斯機臥推','下斜史密斯機臥推','繩索胸推','平板繩索飛鳥','低位繩索夾胸','單臂繩索夾胸','啞鈴仰臥拉舉','上斜伏地挺身','下斜伏地挺身','彈力帶夾胸','斯文推（Svend Press）'],
-  back:  ['引體向上','反握引體向上','寬握引體向上','中立握引體向上','槓鈴划船','啞鈴划船','T槓划船','俯身划船','坐姿繩索划船','繩索直臂下拉','啞鈴直臂划船','滑輪下拉','反握滑輪下拉','中立握下拉','硬舉','臉拉','背伸展','史密斯機划船','彈力帶划船','單臂滑輪下拉','負重引體向上','彈力帶輔助引體向上','反向划船（澳式引體）','單臂地雷管划船','胸靠上斜啞鈴划船','反握槓鈴划船','單臂坐姿繩索划船','機械划船','高位划船機','槓鈴仰臥拉舉','繩索直臂下拉（繩把）','架上拉','墊高硬舉','六角槓硬舉','單臂壺鈴划船','叛徒划船','反向背伸展','肩胛引體'],
-  legs:  ['深蹲','前蹲','相撲深蹲','哈克深蹲','箱上深蹲','史密斯機深蹲','保加利亞分腿蹲','弓箭步','行走弓箭步','側弓箭步','腿推機','腿彎舉（臥式）','腿彎舉（坐式）','腿伸展','臀推','臀腿機','繩索臀踢','蚌式開合','羅馬尼亞硬舉','直腿硬舉','小腿提踵（站姿）','小腿提踵（坐姿）','高腳杯深蹲','啞鈴深蹲','相撲硬舉','早安式','槓鈴弓箭步','後跨步弓箭步','啞鈴登階','站姿腿彎舉','北歐腿彎舉','槓鈴臀橋','單腳臀橋','髖外展機','髖內收機','壺鈴擺盪','啞鈴羅馬尼亞硬舉','單腳羅馬尼亞硬舉','驢式提踵','腿推機提踵','徒手深蹲','深蹲跳'],
-  shoulders: ['啞鈴肩推','槓鈴肩推','Arnold推舉','史密斯機肩推','坐姿肩推機','側平舉','繩索側平舉','機械側平舉','前平舉','繩索前平舉','後三角啞鈴飛鳥','繩索後三角飛鳥','反向蝴蝶機','直立划船','臉拉','啞鈴聳肩','槓鈴聳肩','站姿槓鈴肩推（軍式推舉）','單臂啞鈴肩推','站姿啞鈴肩推','繩索肩推','借力推舉','壺鈴肩推','坐姿側平舉','側臥側平舉','上斜側平舉','槓片前平舉','槓鈴前平舉','俯臥後三角飛鳥','繩索後三角划船','彈力帶擴胸（Pull-Apart）','古巴推舉','繩索外旋','彈力帶外旋','繩索直立划船','啞鈴直立划船','繩索聳肩','倒立伏地挺身','Y字上舉'],
-  biceps:  ['啞鈴彎舉','槓鈴彎舉','EZ槓彎舉','錘式彎舉','斜板錘式彎舉','集中彎舉','斜板彎舉（牧師凳）','托臂彎舉','繩索彎舉','繩索錘式彎舉','反握彎舉','對握引體向上','機械彎舉','上斜啞鈴彎舉','蜘蛛彎舉','拖曳彎舉','佐特曼彎舉','跨體錘式彎舉','窄握EZ槓彎舉','寬握槓鈴彎舉','繩索牧師椅彎舉','高位繩索彎舉','單臂繩索彎舉','反握繩索彎舉','坐姿啞鈴彎舉','牧師椅錘式彎舉','腕彎舉','反向腕彎舉','捲腕器'],
-  triceps: ['繩索三頭下壓','直桿三頭下壓','反握三頭下壓','法式彎舉（EZ槓）','法式彎舉（啞鈴）','窄握臥推','史密斯機窄握臥推','雙槓撐體（三頭）','板凳撐體','啞鈴三頭伸展（單手）','啞鈴三頭伸展（雙手）','過頭繩索伸展','三頭踢回（Kickback）','機械三頭下壓','JM推','泰特推（Tate Press）','單臂繩索三頭伸展','V把三頭下壓','仰臥繩索三頭伸展','上斜槓鈴三頭伸展','下斜啞鈴三頭伸展','坐姿槓鈴過頭伸展','站姿槓鈴過頭伸展','窄握啞鈴臥推','窄握EZ槓臥推','撐體機','負重板凳撐體','吊環撐體'],
-  core:    ['仰臥起坐','捲腹','反向捲腹','自行車捲腹','平板支撐','側平板','動態平板','俄羅斯轉體','懸吊舉腿','懸吊屈膝舉腿','仰臥舉腿','剪刀腳','死蟲','健腹輪','山式爬行','V字起身','超人式','臀橋','繩索捲腹','捲腹機','下斜捲腹','下斜反向捲腹','負重捲腹','側捲腹','啞鈴側彎','帕洛夫推（Pallof Press）','繩索伐木','地雷管轉體','槓片轉體','抗力球捲腹','抗力球收膝','懸吊屈體上舉','坐姿收腿','繩索反向捲腹','藥球砸地','壺鈴風車'],
+// 預設動作：部位 → [動作類型, [動作…]]（選動作清單依此分段；新增動作時同步補 js/exercise-map.js 的對照與器材 e）
+// 只新增、不改名：舊紀錄以名稱字串對應（tools/check-exercise-map.js 會檢查）
+const PRESET_GROUPS = {
+  chest: [
+    ['平推', ['啞鈴臥推','槓鈴臥推','史密斯機臥推','胸推機','啞鈴對握臥推','寬握槓鈴臥推','地板臥推','單臂啞鈴臥推','繩索胸推']],
+    ['上斜推', ['上斜啞鈴臥推','上斜槓鈴臥推','上斜胸推機','上斜史密斯機臥推']],
+    ['下斜推', ['下斜啞鈴臥推','下斜槓鈴臥推','下斜胸推機','下斜史密斯機臥推']],
+    ['夾胸／飛鳥', ['啞鈴飛鳥','上斜啞鈴飛鳥','下斜啞鈴飛鳥','蝴蝶機夾胸','繩索夾胸','上斜繩索飛鳥','下斜繩索飛鳥','平板繩索飛鳥','低位繩索夾胸','單臂繩索夾胸','彈力帶夾胸','斯文推（Svend Press）']],
+    ['伏地挺身／撐體', ['伏地挺身','寬距伏地挺身','鑽石伏地挺身','上斜伏地挺身','下斜伏地挺身','雙槓撐體（胸）']],
+    ['其他', ['啞鈴仰臥拉舉']],
+  ],
+  back: [
+    ['引體向上', ['引體向上','反握引體向上','寬握引體向上','中立握引體向上','負重引體向上','彈力帶輔助引體向上','肩胛引體']],
+    ['下拉', ['滑輪下拉','反握滑輪下拉','中立握下拉','單臂滑輪下拉']],
+    ['直臂下拉／拉舉', ['繩索直臂下拉','繩索直臂下拉（繩把）','槓鈴仰臥拉舉']],
+    ['划船', ['槓鈴划船','反握槓鈴划船','T槓划船','單臂地雷管划船','啞鈴划船','俯身划船','啞鈴直臂划船','胸靠上斜啞鈴划船','坐姿繩索划船','單臂坐姿繩索划船','臉拉','史密斯機划船','機械划船','高位划船機','反向划船（澳式引體）','彈力帶划船','單臂壺鈴划船','叛徒划船']],
+    ['硬舉', ['硬舉','架上拉','墊高硬舉','六角槓硬舉']],
+    ['下背', ['背伸展','反向背伸展']],
+  ],
+  legs: [
+    ['深蹲', ['深蹲','前蹲','相撲深蹲','箱上深蹲','哈克深蹲','史密斯機深蹲','高腳杯深蹲','啞鈴深蹲','徒手深蹲','深蹲跳']],
+    ['腿推／腿伸展', ['腿推機','腿伸展']],
+    ['分腿蹲／弓箭步', ['保加利亞分腿蹲','弓箭步','行走弓箭步','側弓箭步','槓鈴弓箭步','後跨步弓箭步','啞鈴登階']],
+    ['硬舉／髖鉸鏈', ['羅馬尼亞硬舉','直腿硬舉','相撲硬舉','早安式','啞鈴羅馬尼亞硬舉','單腳羅馬尼亞硬舉','壺鈴擺盪']],
+    ['腿彎舉', ['腿彎舉（臥式）','腿彎舉（坐式）','站姿腿彎舉','北歐腿彎舉','臀腿機']],
+    ['臀／髖', ['臀推','臀橋','槓鈴臀橋','單腳臀橋','繩索臀踢','蚌式開合','髖外展機','髖內收機']],
+    ['小腿', ['小腿提踵（站姿）','小腿提踵（坐姿）','驢式提踵','腿推機提踵']],
+  ],
+  shoulders: [
+    ['肩推', ['啞鈴肩推','槓鈴肩推','站姿槓鈴肩推（軍式推舉）','Arnold推舉','單臂啞鈴肩推','站姿啞鈴肩推','史密斯機肩推','坐姿肩推機','繩索肩推','借力推舉','壺鈴肩推','倒立伏地挺身']],
+    ['側平舉／直立划船', ['側平舉','坐姿側平舉','側臥側平舉','上斜側平舉','繩索側平舉','機械側平舉','Y字上舉','直立划船','繩索直立划船','啞鈴直立划船']],
+    ['前平舉', ['前平舉','繩索前平舉','槓片前平舉','槓鈴前平舉']],
+    ['後三角', ['後三角啞鈴飛鳥','俯臥後三角飛鳥','繩索後三角飛鳥','反向蝴蝶機','臉拉','繩索後三角划船','彈力帶擴胸（Pull-Apart）']],
+    ['聳肩', ['啞鈴聳肩','槓鈴聳肩','繩索聳肩']],
+    ['旋轉肌', ['古巴推舉','繩索外旋','彈力帶外旋']],
+  ],
+  biceps: [
+    ['一般彎舉', ['啞鈴彎舉','槓鈴彎舉','EZ槓彎舉','窄握EZ槓彎舉','寬握槓鈴彎舉','拖曳彎舉','佐特曼彎舉','上斜啞鈴彎舉','坐姿啞鈴彎舉','繩索彎舉','單臂繩索彎舉','高位繩索彎舉']],
+    ['錘式／反握', ['錘式彎舉','斜板錘式彎舉','跨體錘式彎舉','繩索錘式彎舉','牧師椅錘式彎舉','反握彎舉','反握繩索彎舉']],
+    ['牧師椅／集中', ['斜板彎舉（牧師凳）','托臂彎舉','集中彎舉','蜘蛛彎舉','繩索牧師椅彎舉','機械彎舉']],
+    ['前臂', ['腕彎舉','反向腕彎舉','捲腕器']],
+    ['其他', ['對握引體向上']],
+  ],
+  triceps: [
+    ['下壓', ['繩索三頭下壓','直桿三頭下壓','反握三頭下壓','V把三頭下壓','機械三頭下壓']],
+    ['過頭伸展', ['啞鈴三頭伸展（單手）','啞鈴三頭伸展（雙手）','過頭繩索伸展','坐姿槓鈴過頭伸展','站姿槓鈴過頭伸展']],
+    ['仰臥伸展', ['法式彎舉（EZ槓）','法式彎舉（啞鈴）','上斜槓鈴三頭伸展','下斜啞鈴三頭伸展','仰臥繩索三頭伸展','泰特推（Tate Press）']],
+    ['窄握推', ['窄握臥推','JM推','窄握EZ槓臥推','窄握啞鈴臥推','史密斯機窄握臥推']],
+    ['撐體', ['雙槓撐體（三頭）','吊環撐體','板凳撐體','負重板凳撐體','撐體機']],
+    ['踢回／單臂', ['三頭踢回（Kickback）','單臂繩索三頭伸展']],
+  ],
+  core: [
+    ['捲腹', ['仰臥起坐','捲腹','下斜捲腹','負重捲腹','V字起身','抗力球捲腹','繩索捲腹','捲腹機']],
+    ['舉腿（下腹）', ['反向捲腹','下斜反向捲腹','仰臥舉腿','剪刀腳','懸吊舉腿','懸吊屈膝舉腿','懸吊屈體上舉','坐姿收腿','抗力球收膝','繩索反向捲腹']],
+    ['旋轉／側腹', ['自行車捲腹','俄羅斯轉體','側捲腹','啞鈴側彎','槓片轉體','地雷管轉體','繩索伐木','壺鈴風車']],
+    ['穩定', ['平板支撐','側平板','動態平板','死蟲','超人式','山式爬行','健腹輪','帕洛夫推（Pallof Press）','藥球砸地']],
+  ],
 };
+const PRESET_EXERCISES = Object.fromEntries(Object.entries(PRESET_GROUPS).map(([p, gs]) => [p, gs.flatMap(g => g[1])]));
 
 const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 const IMG_EXT  = '/0.jpg';
@@ -1511,12 +1561,12 @@ function saveWeightWorkout(date, part) {
 
 // ── Exercise Picker (Bottom Sheet) ─────────────────────────────────────────
 
-let _pd='', _pp='';
+let _pd='', _pp='', _peq='';  // _peq：器材篩選（''＝全部）
 
 function openPicker(date, part) {
   if (document.getElementById('p-sheet')) return;
   lockScroll();
-  _pd=date; _pp=part; _syncInputs();
+  _pd=date; _pp=part; _peq=''; _syncInputs();
 
   const overlay = Object.assign(document.createElement('div'),{id:'p-overlay',className:'overlay'});
   overlay.onclick = closePicker;
@@ -1532,6 +1582,7 @@ function openPicker(date, part) {
     <div class="sheet-search-wrap">
       <input id="picker-search" class="sheet-search-input" type="text" placeholder="搜尋動作（中英文皆可）…" autocomplete="off" oninput="_filterPicker(this.value)">
     </div>
+    <div class="picker-eq-bar" role="group" aria-label="依器材篩選">${_eqBarHtml()}</div>
     <div id="picker-list" class="sheet-list">${_buildPickerList('')}</div>
     <div class="sheet-custom">
       <input id="custom-ex-input" class="form-input" type="text" placeholder="自訂動作名稱…">
@@ -1570,10 +1621,10 @@ function _buildPickerList(q) {
   const all = [...new Set([...favs,...recentNames,...presets,...customs])];
   const qLow = q.trim().toLowerCase();
   // 同時搜尋中文名與英文原名（REDESIGN_PROMPT：附英文原名搜尋）
-  const filtered = qLow
-    ? all.filter(n => n.toLowerCase().includes(qLow) || _exEngName(n).toLowerCase().includes(qLow))
-    : all;
-  if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px">找不到「${q}」</div>`;
+  const filtered = all
+    .filter(n => !qLow || n.toLowerCase().includes(qLow) || _exEngName(n).toLowerCase().includes(qLow))
+    .filter(n => !_peq || _exEquip(n) === _peq);
+  if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px">${qLow ? `找不到「${escHtml(q)}」` : '沒有符合的動作'}${_peq ? `（${_peq}）` : ''}</div>`;
 
   // 排序：最愛 → 上次使用 → 所有動作／搜尋結果，每個動作只出現一次（搜尋時最愛一樣置頂）
   const favFiltered = favs.filter(n=>filtered.includes(n));
@@ -1613,7 +1664,13 @@ function _buildPickerList(q) {
   let html='';
   if (favFiltered.length) html+=`<div class="picker-sec-label">最愛</div>${favFiltered.map(item).join('')}`;
   if (recentFiltered.length) html+=`<div class="picker-sec-label">上次使用</div>${recentFiltered.map(item).join('')}`;
-  if (rest.length) html+=`<div class="picker-sec-label">${qLow?'搜尋結果':'所有動作'}</div>${rest.map(item).join('')}`;
+  // 其餘動作依動作類型分段（PRESET_GROUPS 順序）；自訂動作（與歷史中不在預設清單的名稱）排最後
+  const groups = (PRESET_GROUPS[_pp] || []).map(([g, ns]) => [g, ns.filter(n => rest.includes(n))]);
+  const grouped = new Set(groups.flatMap(g => g[1]));
+  groups.push(['自訂動作', rest.filter(n => !grouped.has(n))]);
+  groups.filter(g => g[1].length).forEach(([g, ns]) => {
+    html += `<div class="picker-sec-label">${escHtml(g)}</div>${ns.map(item).join('')}`;
+  });
   return html;
 }
 
@@ -1625,6 +1682,19 @@ function _pickerTap(el) {
 function _pickerDemo(el) {
   const row = el.closest('.picker-ex-row');
   if (row) showDemo(row.dataset.name);
+}
+// 器材：預設動作看對照表 e，自訂動作沒有器材資料 → 其他
+const EQUIP_FILTERS = ['槓鈴', '啞鈴', '繩索', '機械', '徒手', '其他'];
+function _exEquip(name) { return (_mapEntry(name) || {}).e || '其他'; }
+function _eqBarHtml() {
+  return ['', ...EQUIP_FILTERS].map(e =>
+    `<button class="unit-pill picker-eq-pill${_peq === e ? ' active' : ''}" aria-pressed="${_peq === e}" onclick="_setPickerEq('${e}')">${e || '全部'}</button>`).join('');
+}
+function _setPickerEq(e) {
+  _peq = e;
+  const bar = document.querySelector('.picker-eq-bar'); if (bar) bar.innerHTML = _eqBarHtml();
+  _filterPicker(document.getElementById('picker-search')?.value || '');
+  const list = document.getElementById('picker-list'); if (list) list.scrollTop = 0;
 }
 function _pickerFav(el) {
   const name = el.closest('.picker-ex-row')?.dataset.name;
