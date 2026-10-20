@@ -260,10 +260,35 @@ const DB = {
       .sort((a,b) => b.date.localeCompare(a.date))[0] || null;
   },
   customEx(part) { return this._load().custom[part] || []; },
+  // listTs[kind][part][name] = {a: 新增時間, d: 刪除時間}：讓刪除能跨裝置同步、不被聯集合併加回來（js/sync.js mergeLists）
+  _stampList(d, kind, part, name, field, t) {
+    const lt = d.listTs || {}, k = lt[kind] || {}, p = k[part] || {};
+    return { ...lt, [kind]: { ...k, [part]: { ...p, [name]: { ...(p[name] || {}), [field]: t } } } };
+  },
   addCustomEx(part, name) {
     const d=this._load();
-    if (!d.custom[part]) d.custom[part]=[];
-    if (!d.custom[part].includes(name)) { d.custom[part].push(name); d.profileUpdatedAt = Date.now(); this._save(d); this._sync(); }
+    if ((d.custom[part] || []).includes(name)) return;
+    const t = Date.now();
+    this._save({ ...d, custom: { ...d.custom, [part]: [...(d.custom[part] || []), name] },
+      listTs: this._stampList(d, 'custom', part, name, 'a', t), profileUpdatedAt: t });
+    this._sync();
+  },
+  // 只從可選清單移除，不動任何訓練紀錄；一併取消收藏（不留殭屍收藏）
+  removeCustomEx(part, name) {
+    const d = this._load(), t = Date.now();
+    const next = { ...d, custom: { ...d.custom, [part]: (d.custom[part] || []).filter(n => n !== name) },
+      listTs: this._stampList(d, 'custom', part, name, 'd', t), profileUpdatedAt: t };
+    const fav = (d.favorites || {})[part] || [];
+    if (fav.includes(name)) {
+      next.favorites = { ...d.favorites, [part]: fav.filter(n => n !== name) };
+      next.listTs = this._stampList(next, 'favorites', part, name, 'd', t);
+    }
+    this._save(next); this._sync();
+  },
+  // 曾經新增後又刪除的自訂動作（「上次使用」要隱藏它）
+  isRemovedCustom(part, name) {
+    const v = ((this._load().listTs || {}).custom || {})[part]?.[name];
+    return !!v && (v.d || 0) > (v.a || 0);
   },
   getAvatar() { return this._load().avatar || null; },
   // 體重時間序列；無紀錄時以 avatar 建檔體重補一筆（建檔日），維持純函數推導
@@ -1527,8 +1552,11 @@ function _exEngName(zhName) {
 function _buildPickerList(q) {
   const added = new Set((window.currentExercises||[]).map(e=>e.name));
   const last = DB.lastForPart(_pp);
-  const recentNames = last ? last.exercises.map(e=>e.name) : [];
-  const all = [...new Set([...recentNames,...(PRESET_EXERCISES[_pp]||[]),...DB.customEx(_pp)])];
+  const presets = PRESET_EXERCISES[_pp] || [], customs = DB.customEx(_pp);
+  // 已刪除的自訂動作不再出現在「上次使用」（歷史紀錄本身不受影響）
+  const recentNames = (last ? last.exercises.map(e=>e.name) : [])
+    .filter(n => presets.includes(n) || customs.includes(n) || !DB.isRemovedCustom(_pp, n));
+  const all = [...new Set([...recentNames,...presets,...customs])];
   const qLow = q.trim().toLowerCase();
   // 同時搜尋中文名與英文原名（REDESIGN_PROMPT：附英文原名搜尋）
   const filtered = qLow
@@ -1562,6 +1590,8 @@ function _buildPickerList(q) {
           ${engName && !isAdded && !isRecent ? `<span class="picker-ex-eng">${escHtml(engName)}</span>` : ''}
         </div>
       </div>
+      ${customs.includes(name) && !presets.includes(name)
+        ? `<button class="btn-icon picker-ex-act picker-ex-del" onclick="_pickerDelCustom(this)" aria-label="刪除自訂動作">${ic('trash')}</button>` : ''}
     </div>`;
   };
 
@@ -1579,6 +1609,14 @@ function _pickerTap(el) {
 function _pickerDemo(el) {
   const row = el.closest('.picker-ex-row');
   if (row) showDemo(row.dataset.name);
+}
+function _pickerDelCustom(el) {
+  const name = el.closest('.picker-ex-row')?.dataset.name;
+  if (!name || !confirm(`從清單刪除自訂動作「${name}」？
+（已記錄的訓練、PR、圖表都會保留）`)) return;
+  DB.removeCustomEx(_pp, name);
+  _filterPicker(document.getElementById('picker-search')?.value || '');
+  showToast('已從清單刪除');
 }
 function _filterPicker(q) { const el=document.getElementById('picker-list'); if(el) el.innerHTML=_buildPickerList(q); }
 function _addCustomEx() {
@@ -1870,10 +1908,10 @@ function importData() {
         if (newBW.length) merged.bodyWeights = [...curBW, ...newBW].sort((a, b) => a.date.localeCompare(b.date));
         if (newRP.length) merged.restPeriods = [...curRP, ...newRP];
 
-        if (parsed.custom) {
-          Object.keys(parsed.custom).forEach(part => {
-            merged.custom[part] = [...new Set([...(merged.custom[part]||[]), ...(parsed.custom[part]||[])])];
-          });
+        // 自訂動作／最愛：與雲端同步同一套規則（已刪除的不會因匯入舊備份而復活）
+        if (parsed.custom || parsed.favorites || parsed.listTs) {
+          const lists = window.Sync && Sync.mergeLists ? Sync.mergeLists(cur, parsed) : null;
+          if (lists) Object.assign(merged, lists, { profileUpdatedAt: now });
         }
         // 註：PR 現由全部紀錄即時重算（computePR），匯入 workouts 後自動反映，不需合併 prs
 

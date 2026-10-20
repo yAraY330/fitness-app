@@ -28,6 +28,31 @@ const ok = (c, msg) => { if (c) pass++; else { fail++; console.log('  FAIL ' + m
   ok(p.custom.chest.length === 2, '自訂動作聯集');
   ok(p.updatedAt === 20, 'profile 時間取較大');
   ok(mergeProfile({ profileUpdatedAt: 50 }, { avatar: { name: 'R' }, updatedAt: 1 }).avatar.name === 'R', '本機沒有角色 → 用雲端的（新裝置還原）');
+
+  // 自訂動作／最愛的刪除（listTs）
+  const { mergeLists } = Sync._test;
+  const del = mergeLists(
+    { custom: { chest: [] }, listTs: { custom: { chest: { X: { a: 1, d: 5 } } } } },
+    { custom: { chest: ['X', 'Y'] }, listTs: { custom: { chest: { X: { a: 1 } } } } });
+  ok(!del.custom.chest.includes('X') && del.custom.chest.includes('Y'), '本機刪除後同步 → 雲端那份不會讓它復活');
+  ok(del.listTs.custom.chest.X.d === 5 && del.listTs.custom.chest.X.a === 1, '刪除／新增時間各取最大');
+  const readd = mergeLists(
+    { custom: { chest: ['X'] }, listTs: { custom: { chest: { X: { a: 9, d: 5 } } } } },
+    { custom: { chest: [] }, listTs: { custom: { chest: { X: { a: 1, d: 5 } } } } });
+  ok(readd.custom.chest.includes('X'), '刪除後又重新新增 → 保留');
+  const twoDev = mergeLists(
+    { custom: { legs: ['A', 'B'] } },
+    { custom: { legs: ['B'] }, listTs: { custom: { legs: { A: { d: 7 } } } } });
+  ok(!twoDev.custom.legs.includes('A') && twoDev.custom.legs.includes('B'), '一台刪、另一台沒刪（舊資料沒有新增時間）→ 刪除勝出');
+  const legacy = mergeLists({ custom: { core: ['P'] } }, { custom: { core: ['Q'] } });
+  ok(legacy.custom.core.length === 2 && Object.keys(legacy.listTs).length === 0, '舊資料沒有 listTs → 照舊聯集');
+  const favs = mergeLists(
+    { favorites: { chest: ['槓鈴臥推'] }, listTs: { favorites: { chest: { 槓鈴臥推: { a: 3, d: 8 } } } } },
+    { favorites: { chest: ['槓鈴臥推', '啞鈴臥推'] } });
+  ok(!favs.favorites.chest.includes('槓鈴臥推') && favs.favorites.chest.includes('啞鈴臥推'), '取消收藏同樣不會被雲端加回來');
+  const pl = mergeProfile({ custom: { chest: [] }, listTs: { custom: { chest: { X: { a: 1, d: 5 } } } }, profileUpdatedAt: 10 },
+    { custom: { chest: ['X'] }, updatedAt: 20 });
+  ok(!pl.custom.chest.includes('X') && pl.listTs.custom.chest.X.d === 5, 'mergeProfile 套用 listTs（雲端較新也不會復活）');
 }
 
 // ── 2. 假 Firestore ────────────────────────────────────────────────────

@@ -20,7 +20,7 @@
 - 改動後：`node --check js/*.js`、`node tools/engine-test.js`（30 項全過）、`node tools/sprite-test.js`、`node tools/check-exercise-map.js`（動作庫：舊名稱不得改名／換部位、對照表完整）
 - 視覺驗證：`python -m http.server 8123` + headless Chrome 截圖 `dev-seed.html`（注入測試資料後轉首頁）
 - 部署前檢查 sw.js 快取版本號已升級
-- 同步合併規則：`node tools/sync-test.js`
+- 同步合併規則：`node tools/sync-test.js`（含自訂動作／最愛刪除的 listTs 規則）
 
 ## 部署
 
@@ -38,5 +38,5 @@
 - `assets/`：自架靜態資源（`fonts/` Cubic 11 字型 + OFL 授權、`icons/` Tabler Icons SVG，MIT、`vendor/` GSAP、Lenis、Firebase（`vendor/firebase/`，只在登入後載入）原檔（授權見 `vendor/LICENSES.txt`）、`character/hero.webp` 舊水墨立繪，已不使用）。不用 CDN 字型/圖示/JS 函式庫，確保離線與弱網路下可用（升級函式庫＝下載新版原檔覆蓋並升 sw 版本）；新增檔案需同步加進 sw.js ASSETS
 - `DB._load()` 有記憶體快取：回傳的物件是共用的，**修改前必須先複製**，寫入一律走 `DB._save()`（不要直接 `localStorage.setItem(DB.KEY, …)`，會讓快取過期）
 - 角色：`js/sprite.js`（選圖＋部位分數變形，純函數＋結果快取）＋ `js/sprite-data.js`（10 張基底，**勿手改**）。改角色圖或部位範圍 → 改 `design/characters/pixel/build_base.py`（IMAGES 手量的頭髮頂／腳底、BANDS 手量的部位列）後執行 `python design/characters/pixel/build_base.py`（來源圖在 `art/`，不進 git）；預覽 `design/characters/pixel/sprite-lab.html`。**不得垂直拉長角色**（使用者明確禁止）
-- 雲端同步（`js/sync.js`）：Google 登入（一律 `signInWithRedirect`）＋ Firestore `users/{uid}/workouts/{id}`、`users/{uid}/meta/profile`。**localStorage 仍是唯一讀取來源**，雲端只是副本；沒登入時不載入 Firebase SDK（`assets/vendor/firebase/` compat 版，延遲載入）。DB 寫入方法負責蓋 `updatedAt`（workout）／`profileUpdatedAt`、刪除記墓碑 `deleted[id]`，並通知 `Sync`——**新增任何會改資料的 DB 方法都要照做**，否則該改動不會同步。合併規則（新者勝、墓碑、體重依日期聯集）是 `js/sync.js` 的純函數
+- 雲端同步（`js/sync.js`）：Google 登入（一律 `signInWithRedirect`）＋ Firestore `users/{uid}/workouts/{id}`、`users/{uid}/meta/profile`。**localStorage 仍是唯一讀取來源**，雲端只是副本；沒登入時不載入 Firebase SDK（`assets/vendor/firebase/` compat 版，延遲載入）。DB 寫入方法負責蓋 `updatedAt`（workout）／`profileUpdatedAt`、刪除記墓碑 `deleted[id]`，並通知 `Sync`——**新增任何會改資料的 DB 方法都要照做**，否則該改動不會同步。合併規則（新者勝、墓碑、體重依日期聯集、自訂動作／最愛依 `listTs` 新增／刪除時間合併）是 `js/sync.js` 的純函數；匯入備份也走 `Sync.mergeLists`
 - UI 不使用 emoji（DESIGN.md 規定），圖示用 `assets/icons/` 搭配 `.ic` CSS mask

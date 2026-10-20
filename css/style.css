@@ -248,7 +248,10 @@ a, button, [role="button"], input, select, textarea, label {
 }
 .ex-thumb-wrap:active { opacity: 0.7; }
 .ex-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ex-thumb-icon { font-size: 22px; user-select: none; }
+.ex-thumb-icon { font-size: 22px; user-select: none; color: var(--bg); }  /* 縮圖底是白色，圖示要用深色才看得到 */
+/* 選動作清單每列右側的獨立按鈕（刪除／收藏），點擊區 44px，不與「點擊加入」重疊 */
+.picker-ex-act { width: 44px; height: 44px; flex-shrink: 0; align-self: center; margin-right: 6px; color: var(--text-secondary); }
+.picker-ex-del { color: var(--danger); }
 
 .picker-ex-info { flex: 1; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
 .picker-ex-info:active { background: var(--primary-light); }

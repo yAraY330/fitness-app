@@ -2,8 +2,8 @@
 //
 // localStorage（DB）仍是唯一讀取來源，雲端只是副本：
 //   users/{uid}/workouts/{id}  一筆訓練一份文件；刪除＝墓碑 {deleted:true, updatedAt}
-//   users/{uid}/meta/profile   avatar／custom／bodyWeights／restPeriods
-// 衝突一律「updatedAt 較新者勝」；體重依日期聯集、自訂動作聯集。
+//   users/{uid}/meta/profile   avatar／custom／favorites／listTs／bodyWeights／restPeriods
+// 衝突一律「updatedAt 較新者勝」；體重依日期聯集；自訂動作與最愛聯集後依 listTs 濾掉已刪除的。
 // 拉資料用伺服器時間 syncedAt 做游標（各裝置時鐘可能不準，用 updatedAt 當游標會漏資料）。
 // 沒登入時不載入 Firebase SDK（assets/vendor/firebase/，約 720KB）。
 (function (root) {
@@ -44,7 +44,37 @@ function mergeWorkouts(workouts, deleted, remote) {
   return { workouts: ws, deleted: del, changed };
 }
 
-// profile 合併：體重依日期聯集（同一天取較新那份）、自訂動作聯集、角色與休養期間較新者勝
+// 自訂動作／最愛清單合併。listTs[kind][part][name] = { a: 新增時間, d: 刪除時間 }，
+// 兩邊時間各取最大；刪除時間比新增時間晚就算已刪除（刪掉後重新新增同名也能保留）。
+// 沒有 listTs 的舊資料：只做聯集，行為與以前相同
+const LIST_KINDS = ['custom', 'favorites'];
+function mergeLists(local, remote) {
+  const L = local || {}, R = remote || {};
+  const listTs = {};
+  [L.listTs || {}, R.listTs || {}].forEach(src => Object.keys(src).forEach(kind => {
+    const bp = src[kind] || {};
+    Object.keys(bp).forEach(part => Object.keys(bp[part] || {}).forEach(name => {
+      const v = bp[part][name] || {}, k = (listTs[kind] = listTs[kind] || {}), p = (k[part] = k[part] || {});
+      const cur = p[name] || { a: 0, d: 0 };
+      p[name] = { a: Math.max(ts(cur.a), ts(v.a)), d: Math.max(ts(cur.d), ts(v.d)) };
+    }));
+  }));
+  const out = { listTs };
+  LIST_KINDS.forEach(kind => {
+    const lists = {};
+    [L[kind] || {}, R[kind] || {}].forEach(c => Object.keys(c).forEach(p => {
+      lists[p] = [...new Set([...(lists[p] || []), ...(c[p] || [])])];
+    }));
+    Object.keys(lists).forEach(p => {
+      const t = (listTs[kind] || {})[p] || {};
+      lists[p] = lists[p].filter(n => !(t[n] && t[n].d > t[n].a));
+    });
+    out[kind] = lists;
+  });
+  return out;
+}
+
+// profile 合併：體重依日期聯集（同一天取較新那份）、自訂動作／最愛見 mergeLists、角色與休養期間較新者勝
 function mergeProfile(local, remote) {
   const lt = ts(local.profileUpdatedAt), rt = ts(remote && remote.updatedAt);
   if (!remote) return { ...pickProfile(local), updatedAt: lt };
@@ -52,20 +82,17 @@ function mergeProfile(local, remote) {
   const bw = new Map();
   (older.bodyWeights || []).forEach(e => e && e.date && bw.set(e.date, e));
   (newer.bodyWeights || []).forEach(e => e && e.date && bw.set(e.date, e));
-  const custom = {};
-  [local.custom || {}, remote.custom || {}].forEach(c => Object.keys(c).forEach(p => {
-    custom[p] = [...new Set([...(custom[p] || []), ...(c[p] || [])])];
-  }));
+  const lists = mergeLists(local, remote);
   return {
     avatar: newer.avatar || older.avatar || null,
-    custom,
+    custom: lists.custom, favorites: lists.favorites, listTs: lists.listTs,
     bodyWeights: [...bw.values()].sort((a, b) => a.date.localeCompare(b.date)),
     restPeriods: Array.isArray(newer.restPeriods) ? newer.restPeriods : (older.restPeriods || []),
     updatedAt: Math.max(lt, rt),
   };
 }
 function pickProfile(d) {
-  return { avatar: d.avatar || null, custom: d.custom || {}, bodyWeights: d.bodyWeights || [], restPeriods: d.restPeriods || [] };
+  return { avatar: d.avatar || null, custom: d.custom || {}, favorites: d.favorites || {}, listTs: d.listTs || {}, bodyWeights: d.bodyWeights || [], restPeriods: d.restPeriods || [] };
 }
 // 比較用：忽略時間欄位與屬性順序
 const stable = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x)
@@ -239,6 +266,7 @@ const Sync = {
 };
 
 // 測試用：注入假的 Firestore、切換裝置時清掉狀態快取
-Sync._test = { mergeWorkouts, mergeProfile, sameProfile, setFirebase: f => { fb = f; }, reset: () => { state._s = null; running = false; again = false; } };
+Sync.mergeLists = mergeLists;  // app.js 匯入備份也用同一套規則
+Sync._test = { mergeWorkouts, mergeProfile, mergeLists, sameProfile, setFirebase: f => { fb = f; }, reset: () => { state._s = null; running = false; again = false; } };
 if (typeof module !== 'undefined') module.exports = Sync; else root.Sync = Sync;
 })(typeof window !== 'undefined' ? window : globalThis);
