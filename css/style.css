@@ -252,6 +252,8 @@ a, button, [role="button"], input, select, textarea, label {
 /* 選動作清單每列右側的獨立按鈕（刪除／收藏），點擊區 44px，不與「點擊加入」重疊 */
 .picker-ex-act { width: 44px; height: 44px; flex-shrink: 0; align-self: center; margin-right: 6px; color: var(--text-secondary); }
 .picker-ex-del { color: var(--danger); }
+.picker-ex-fav.is-on { color: var(--primary); }
+.picker-ex-fav + .picker-ex-del { margin-left: -6px; }  /* 兩個按鈕並排時收緊間距 */
 
 .picker-ex-info { flex: 1; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
 .picker-ex-info:active { background: var(--primary-light); }

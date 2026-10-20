@@ -1,4 +1,4 @@
-const CACHE = 'fitness-v27';
+const CACHE = 'fitness-v28';
 const MEDIA_CACHE = 'fitness-media-v1';
 const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/avatar.js',
   './js/engine.js', './js/exercise-map.js', './js/exercise-index.js', './js/anim.js', './js/sprite.js', './js/sprite-data.js', './js/sync.js', './manifest.json',
@@ -7,7 +7,8 @@ const ASSETS = ['./', './index.html', './css/style.css', './js/app.js', './js/av
   './assets/icons/chart-bar.svg', './assets/icons/chart-line.svg', './assets/icons/check.svg', './assets/icons/download.svg',
   './assets/icons/home.svg', './assets/icons/notes.svg', './assets/icons/run.svg', './assets/icons/stopwatch.svg',
   './assets/icons/swimming.svg', './assets/icons/trash.svg', './assets/icons/trees.svg', './assets/icons/upload.svg',
-  './assets/icons/user.svg', './assets/icons/x.svg'];
+  './assets/icons/user.svg', './assets/icons/x.svg',
+  './assets/icons/star.svg', './assets/icons/star-filled.svg'];
 
 self.addEventListener('install', e => {
   // cache:'reload'：繞過瀏覽器 HTTP 快取（GitHub Pages 會快取 10 分鐘），確保存進來的是新版檔案

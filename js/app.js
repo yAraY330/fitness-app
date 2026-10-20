@@ -285,6 +285,16 @@ const DB = {
     }
     this._save(next); this._sync();
   },
+  // 最愛：結構同 custom（{部位: [名稱]}），新增／取消時間同樣記在 listTs，跨裝置同步才不會被加回來
+  favorites(part) { return (this._load().favorites || {})[part] || []; },
+  isFavorite(part, name) { return this.favorites(part).includes(name); },
+  toggleFavorite(part, name) {
+    const d = this._load(), t = Date.now(), cur = (d.favorites || {})[part] || [], on = !cur.includes(name);
+    this._save({ ...d, favorites: { ...(d.favorites || {}), [part]: on ? [...cur, name] : cur.filter(n => n !== name) },
+      listTs: this._stampList(d, 'favorites', part, name, on ? 'a' : 'd', t), profileUpdatedAt: t });
+    this._sync();
+    return on;
+  },
   // 曾經新增後又刪除的自訂動作（「上次使用」要隱藏它）
   isRemovedCustom(part, name) {
     const v = ((this._load().listTs || {}).custom || {})[part]?.[name];
@@ -1556,7 +1566,8 @@ function _buildPickerList(q) {
   // 已刪除的自訂動作不再出現在「上次使用」（歷史紀錄本身不受影響）
   const recentNames = (last ? last.exercises.map(e=>e.name) : [])
     .filter(n => presets.includes(n) || customs.includes(n) || !DB.isRemovedCustom(_pp, n));
-  const all = [...new Set([...recentNames,...presets,...customs])];
+  const favs = DB.favorites(_pp);
+  const all = [...new Set([...favs,...recentNames,...presets,...customs])];
   const qLow = q.trim().toLowerCase();
   // 同時搜尋中文名與英文原名（REDESIGN_PROMPT：附英文原名搜尋）
   const filtered = qLow
@@ -1564,8 +1575,10 @@ function _buildPickerList(q) {
     : all;
   if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px">找不到「${q}」</div>`;
 
-  const recentFiltered = !qLow ? recentNames.filter(n=>filtered.includes(n)) : [];
-  const rest = filtered.filter(n=>!recentNames.includes(n)||qLow);
+  // 排序：最愛 → 上次使用 → 所有動作／搜尋結果，每個動作只出現一次（搜尋時最愛一樣置頂）
+  const favFiltered = favs.filter(n=>filtered.includes(n));
+  const recentFiltered = !qLow ? recentNames.filter(n=>filtered.includes(n) && !favs.includes(n)) : [];
+  const rest = filtered.filter(n=>!favs.includes(n) && (!recentNames.includes(n)||qLow));
 
   const item = name => {
     const isAdded = added.has(name), isRecent = !qLow && recentNames.includes(name);
@@ -1590,12 +1603,15 @@ function _buildPickerList(q) {
           ${engName && !isAdded && !isRecent ? `<span class="picker-ex-eng">${escHtml(engName)}</span>` : ''}
         </div>
       </div>
+      <button class="btn-icon picker-ex-act picker-ex-fav${favs.includes(name)?' is-on':''}" onclick="_pickerFav(this)"
+        aria-pressed="${favs.includes(name)}" aria-label="${favs.includes(name)?'取消收藏':'加入最愛'}">${ic(favs.includes(name)?'star-filled':'star')}</button>
       ${customs.includes(name) && !presets.includes(name)
         ? `<button class="btn-icon picker-ex-act picker-ex-del" onclick="_pickerDelCustom(this)" aria-label="刪除自訂動作">${ic('trash')}</button>` : ''}
     </div>`;
   };
 
   let html='';
+  if (favFiltered.length) html+=`<div class="picker-sec-label">最愛</div>${favFiltered.map(item).join('')}`;
   if (recentFiltered.length) html+=`<div class="picker-sec-label">上次使用</div>${recentFiltered.map(item).join('')}`;
   if (rest.length) html+=`<div class="picker-sec-label">${qLow?'搜尋結果':'所有動作'}</div>${rest.map(item).join('')}`;
   return html;
@@ -1609,6 +1625,15 @@ function _pickerTap(el) {
 function _pickerDemo(el) {
   const row = el.closest('.picker-ex-row');
   if (row) showDemo(row.dataset.name);
+}
+function _pickerFav(el) {
+  const name = el.closest('.picker-ex-row')?.dataset.name;
+  if (!name) return;
+  const on = DB.toggleFavorite(_pp, name);
+  const list = document.getElementById('picker-list'), top = list ? list.scrollTop : 0;
+  _filterPicker(document.getElementById('picker-search')?.value || '');
+  if (list) list.scrollTop = top;
+  showToast(on ? '已加入最愛' : '已取消收藏');
 }
 function _pickerDelCustom(el) {
   const name = el.closest('.picker-ex-row')?.dataset.name;
