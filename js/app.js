@@ -1583,11 +1583,7 @@ function openPicker(date, part) {
       <input id="picker-search" class="sheet-search-input" type="text" placeholder="搜尋動作（中英文皆可）…" autocomplete="off" oninput="_filterPicker(this.value)">
     </div>
     <div class="picker-eq-bar" role="group" aria-label="依器材篩選">${_eqBarHtml()}</div>
-    <div id="picker-list" class="sheet-list">${_buildPickerList('')}</div>
-    <div class="sheet-custom">
-      <input id="custom-ex-input" class="form-input" type="text" placeholder="自訂動作名稱…">
-      <button class="btn btn-primary btn-sm" onclick="_addCustomEx()">新增</button>
-    </div>`;
+    <div id="picker-list" class="sheet-list">${_buildPickerList('')}</div>`;
   document.body.appendChild(sheet);
   requestAnimationFrame(()=>{ overlay.classList.add('open'); sheet.classList.add('open'); });
 }
@@ -1624,7 +1620,8 @@ function _buildPickerList(q) {
   const filtered = all
     .filter(n => !qLow || n.toLowerCase().includes(qLow) || _exEngName(n).toLowerCase().includes(qLow))
     .filter(n => !_peq || _exEquip(n) === _peq);
-  if (!filtered.length) return `<div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px">${qLow ? `找不到「${escHtml(q)}」` : '沒有符合的動作'}${_peq ? `（${_peq}）` : ''}</div>`;
+  // 找不到時不留死路：直接提供「把搜尋字新增為自訂動作」
+  if (!filtered.length) return `<p class="picker-empty">${qLow ? `找不到「${escHtml(q)}」` : '沒有符合的動作'}${_peq ? `（${_peq}）` : ''}</p>${_customAddRow(q.trim())}`;
 
   // 排序：最愛 → 上次使用 → 所有動作／搜尋結果，每個動作只出現一次（搜尋時最愛一樣置頂）
   const favFiltered = favs.filter(n=>filtered.includes(n));
@@ -1642,41 +1639,43 @@ function _buildPickerList(q) {
            onerror="_thumbNext(this)">`
       : `<span class="ex-thumb-icon">${ic('barbell', 'ic-lg')}</span>`;
 
-    return `<div class="picker-ex-row${isAdded?' picker-ex-added':''}" data-name="${esc}">
-      <div class="ex-thumb-wrap" onclick="showDemo(this.closest('.picker-ex-row').dataset.name)">
+    const meta = (isRecent ? '<span class="picker-tag">上次使用</span>' : '')
+      + (isAdded ? '<span class="picker-tag">已加入</span>' : '')
+      + (engName && !isAdded && !isRecent ? `<span class="picker-ex-eng">${escHtml(engName)}</span>` : '');
+    // 縮圖（看示範）、名稱（加入）、垃圾桶、星星是四個獨立按鈕；星星固定在最右側一欄對齊
+    // 按下名稱時左側出現 ▶ 游標（DESIGN.md 選中語彙）
+    return `<div class="picker-ex-row${isAdded?' is-added':''}" data-name="${esc}">
+      <button class="ex-thumb-wrap" onclick="showDemo(this.closest('.picker-ex-row').dataset.name)" aria-label="看「${esc}」示範">
         ${thumbHtml}
-      </div>
-      <div class="picker-ex-info" onclick="_pickerTap(this)">
-        <div class="picker-ex-name">${escHtml(name)}</div>
-        <div class="picker-ex-meta">
-          ${isRecent?'<span class="recent-tag">上次使用</span>':''}
-          ${isAdded?'<span class="added-tag">✓ 已加入</span>':''}
-          ${engName && !isAdded && !isRecent ? `<span class="picker-ex-eng">${escHtml(engName)}</span>` : ''}
-        </div>
-      </div>
-      <button class="btn-icon picker-ex-act picker-ex-fav${favs.includes(name)?' is-on':''}" onclick="_pickerFav(this)"
-        aria-pressed="${favs.includes(name)}" aria-label="${favs.includes(name)?'取消收藏':'加入最愛'}">${ic(favs.includes(name)?'star-filled':'star')}</button>
+      </button>
+      <button class="picker-ex-info" onclick="_pickerTap(this)"${isAdded?' aria-disabled="true"':''}>
+        <span class="picker-ex-name">${escHtml(name)}</span>
+        ${meta ? `<span class="picker-ex-meta">${meta}</span>` : ''}
+      </button>
       ${customs.includes(name) && !presets.includes(name)
         ? `<button class="btn-icon picker-ex-act picker-ex-del" onclick="_pickerDelCustom(this)" aria-label="刪除自訂動作">${ic('trash')}</button>` : ''}
+      <button class="btn-icon picker-ex-act picker-ex-fav${favs.includes(name)?' is-on':''}" onclick="_pickerFav(this)"
+        aria-pressed="${favs.includes(name)}" aria-label="${favs.includes(name)?'取消收藏':'加入最愛'}">${ic(favs.includes(name)?'star-filled':'star')}</button>
     </div>`;
   };
 
+  // 分段標題：「名稱 ─── 數量」的視窗分隔線（不用小字大寫眉標）
+  const sec = (label, ns) => `<h3 class="picker-sec"><span>${escHtml(label)}</span><i aria-hidden="true"></i><span class="picker-sec-n">${ns.length}</span></h3>${ns.map(item).join('')}`;
   let html='';
-  if (favFiltered.length) html+=`<div class="picker-sec-label">最愛</div>${favFiltered.map(item).join('')}`;
-  if (recentFiltered.length) html+=`<div class="picker-sec-label">上次使用</div>${recentFiltered.map(item).join('')}`;
+  if (favFiltered.length) html += sec('最愛', favFiltered);
+  if (recentFiltered.length) html += sec('上次使用', recentFiltered);
   // 其餘動作依動作類型分段（PRESET_GROUPS 順序）；自訂動作（與歷史中不在預設清單的名稱）排最後
   const groups = (PRESET_GROUPS[_pp] || []).map(([g, ns]) => [g, ns.filter(n => rest.includes(n))]);
   const grouped = new Set(groups.flatMap(g => g[1]));
-  groups.push(['自訂動作', rest.filter(n => !grouped.has(n))]);
-  groups.filter(g => g[1].length).forEach(([g, ns]) => {
-    html += `<div class="picker-sec-label">${escHtml(g)}</div>${ns.map(item).join('')}`;
-  });
+  groups.filter(g => g[1].length).forEach(([g, ns]) => { html += sec(g, ns); });
+  // 自訂動作固定在最後，段尾是「新增自訂動作」指令列（取代原本常駐底部的輸入框）
+  html += sec('自訂動作', rest.filter(n => !grouped.has(n))) + _customAddRow('');
   return html;
 }
 
 function _pickerTap(el) {
   const row = el.closest('.picker-ex-row');
-  if (!row||row.classList.contains('picker-ex-added')) return;
+  if (!row||row.classList.contains('is-added')) return;
   addExToList(row.dataset.name, _pd, _pp);
 }
 function _pickerDemo(el) {
@@ -1714,6 +1713,27 @@ function _pickerDelCustom(el) {
   showToast('已從清單刪除');
 }
 function _filterPicker(q) { const el=document.getElementById('picker-list'); if(el) el.innerHTML=_buildPickerList(q); }
+// 新增自訂動作：平常是一列指令，點了才在原地展開輸入框
+function _customAddRow(prefill) {
+  const esc = escHtml(prefill);
+  return `<div class="picker-add" id="picker-add">
+    <button class="add-set-btn picker-add-btn" data-prefill="${esc}" onclick="_openCustomInput(this.dataset.prefill)">＋ ${prefill ? `新增「${esc}」為自訂動作` : '新增自訂動作'}</button>
+  </div>`;
+}
+function _openCustomInput(prefill) {
+  const box = document.getElementById('picker-add'); if (!box) return;
+  box.innerHTML = `<div class="picker-add-form">
+    <input id="custom-ex-input" class="sheet-search-input" type="text" maxlength="20" placeholder="動作名稱" value="${escHtml(prefill || '')}"
+      onkeydown="if(event.key==='Enter')_addCustomEx();if(event.key==='Escape')_closeCustomInput()">
+    <button class="btn btn-primary btn-sm" onclick="_addCustomEx()">新增</button>
+    <button class="btn-icon picker-ex-act" onclick="_closeCustomInput()" aria-label="取消">${ic('x')}</button>
+  </div>`;
+  const input = document.getElementById('custom-ex-input');
+  input.focus(); input.scrollIntoView({ block: 'nearest' });
+}
+function _closeCustomInput() {
+  const box = document.getElementById('picker-add'); if (box) box.outerHTML = _customAddRow('');
+}
 function _addCustomEx() {
   const input=document.getElementById('custom-ex-input');
   const name=input?.value.trim();

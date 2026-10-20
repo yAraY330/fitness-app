@@ -231,44 +231,63 @@ a, button, [role="button"], input, select, textarea, label {
 
 .sheet-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 
-.picker-sec-label { font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 16px 4px; background: var(--bg); }
+/* ── 選動作清單（RPG 道具欄）──────────────────────────────────────────────
+   去 AI 化：分段用「名稱 ── 數量」分隔線，不用小字大寫眉標；Cubic 11 單一字重，不加粗不斜體；
+   金色只給「按下／聚焦的 ▶ 游標」與選中的篩選；點擊目標 44px、彼此間距 8px；尺寸皆 4 的倍數 */
+#p-sheet .sheet-title { font-size: 22px; font-weight: 400; letter-spacing: 0; }
+.picker-sec { display: flex; align-items: center; gap: 8px; margin: 0; padding: 16px 16px 4px; font-size: 13px; font-weight: 400; line-height: 1.4; color: var(--on-win); }
+.sheet-list > .picker-sec:first-child { padding-top: 8px; }
+.picker-sec i { flex: 1; border-top: 1px solid var(--border); }
+.picker-sec-n { font-size: 11px; color: var(--muted); }
 
-.picker-ex-row {
-  display: flex; align-items: center; border-bottom: 1px solid var(--border);
-  transition: background 0.1s; min-height: 76px;
-}
-.picker-ex-row:last-child { border-bottom: none; }
-.picker-ex-added { opacity: 0.5; }
+.picker-ex-row { display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 0 8px 0 16px; }
 
 .ex-thumb-wrap {
-  width: 60px; height: 60px; flex-shrink: 0;
-  margin: 8px 0 8px 10px; border-radius: 0; overflow: hidden;
-  background: var(--on-win); display: flex; align-items: center; justify-content: center;
-  cursor: pointer; border: 1px solid var(--border);
+  width: 48px; height: 48px; flex-shrink: 0; margin: 0; padding: 0; overflow: hidden;
+  background: var(--on-win); border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .ex-thumb-wrap:active { opacity: 0.7; }
 .ex-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
-.ex-thumb-icon { font-size: 22px; user-select: none; color: var(--bg); }  /* 縮圖底是白色，圖示要用深色才看得到 */
-/* 選動作清單每列右側的獨立按鈕（刪除／收藏），點擊區 44px，不與「點擊加入」重疊 */
-.picker-ex-act { width: 44px; height: 44px; flex-shrink: 0; align-self: center; margin-right: 6px; color: var(--text-secondary); }
+.ex-thumb-icon { user-select: none; color: var(--bg); }  /* 縮圖底是白色，圖示要用深色才看得到 */
+
+.picker-ex-info {
+  flex: 1; min-width: 0; align-self: stretch; position: relative;
+  display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  padding: 8px 0 8px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+/* ▶ 游標：按下或鍵盤聚焦時出現（DESIGN.md：游標金只給目前選中） */
+.picker-ex-info::before {
+  content: '▶'; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  font-size: 11px; color: var(--primary); visibility: hidden;
+}
+.picker-ex-info:active::before, .picker-ex-info:focus-visible::before { visibility: visible; }
+.is-added .picker-ex-info { cursor: default; }
+.is-added .picker-ex-info::before { visibility: hidden; }
+.picker-ex-info:focus-visible { outline: none; }
+.ex-thumb-wrap:focus-visible { border-color: var(--primary); }
+
+.picker-ex-name { font-size: 16px; font-weight: 400; color: var(--on-win); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.is-added .picker-ex-name { color: var(--muted); }
+.picker-ex-meta { display: flex; align-items: center; gap: 8px; min-height: 16px; }
+.picker-ex-eng { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-tag { font-size: 11px; line-height: 1.4; color: var(--muted); border: 1px solid var(--muted); padding: 0 4px; }
+
+/* 每列右側的獨立按鈕（收藏／刪除）：點擊區 44px，與「點擊加入」不重疊 */
+.picker-ex-act { width: 44px; height: 44px; flex-shrink: 0; color: var(--muted); }
+.picker-ex-fav.is-on { color: var(--on-win); }
 .picker-ex-del { color: var(--danger); }
-.picker-ex-fav.is-on { color: var(--primary); }
-/* 器材篩選：沿用 .unit-pill 樣式，八顆平分一排（不用橫向捲動，避免後面的按鈕被藏起來） */
-.picker-eq-bar { display: flex; gap: 4px; padding: 0 16px 10px; flex-shrink: 0; }
-.picker-eq-bar .picker-eq-pill { flex: 1 1 0; min-width: 0; padding: 6px 0; white-space: nowrap; text-align: center; }
-.picker-ex-fav + .picker-ex-del { margin-left: -6px; }  /* 兩個按鈕並排時收緊間距 */
 
-.picker-ex-info { flex: 1; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
-.picker-ex-info:active { background: var(--primary-light); }
-.picker-ex-name { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.picker-ex-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; min-height: 18px; }
+/* 器材篩選：沿用 .unit-pill 樣式，八顆平分一排（不橫向捲動，避免後面的按鈕被藏起來） */
+.picker-eq-bar { display: flex; gap: 8px; padding: 0 16px 12px; flex-shrink: 0; }
+.picker-eq-bar .picker-eq-pill { flex: 1 1 0; min-width: 0; padding: 4px 0; white-space: nowrap; text-align: center; }
 
-.recent-tag  { font-size: 11px; color: var(--primary); background: var(--primary-light); padding: 2px 6px; border-radius: 0; font-weight: 800; }
-.added-tag   { font-size: 11px; color: var(--success); background: transparent; padding: 2px 6px; border-radius: 0; font-weight: 800; }
-.picker-ex-eng { font-size: 11px; color: var(--text-secondary); font-style: italic; }
-
-.sheet-custom { padding: 12px 16px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; gap: 8px; }
-.sheet-custom .form-input { flex: 1; margin: 0; }
+.picker-empty { margin: 0; padding: 24px 16px 8px; text-align: center; font-size: 13px; color: var(--muted); }
+/* 新增自訂動作：清單最後一列，沿用「＋ 新增一組」的虛線按鈕（同一個 App 的新增長得一樣），點了才展開輸入框 */
+.picker-add { padding: 8px 16px 16px; }
+.picker-add .picker-add-btn { min-height: 44px; margin: 0; font-weight: 400; }
+.picker-add-form { display: flex; gap: 8px; align-items: center; }
+.picker-add-form .sheet-search-input { flex: 1; min-width: 0; }
 
 /* ── Demo modal ── */
 .modal-overlay {
@@ -803,7 +822,7 @@ body *, body *::before, body *::after {
 .xp-bar-fg, .ts-bar-fg { background: var(--gold); }
 
 /* 標籤、徽章、圓點：直角 */
-.workout-badge, .detail-chip, .psel-badge, .psr-badge, .recent-tag, .added-tag, .avatar-lv-chip,
+.workout-badge, .detail-chip, .psel-badge, .psr-badge, .avatar-lv-chip,
 .rest-mode-chip, .stage-current { border-radius: 0 !important; }
 .hcal-dot, .hcal-legend-dot, .prog-part-dot, .stage-dot { border-radius: 0; }
 
