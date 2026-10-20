@@ -17,7 +17,7 @@
 
 ## 驗證
 
-- 改動後：`node --check js/*.js`、`node tools/engine-test.js`（30 項全過）、`node tools/sprite-test.js`
+- 改動後：`node --check js/*.js`、`node tools/engine-test.js`（30 項全過）、`node tools/sprite-test.js`、`node tools/check-exercise-map.js`（動作庫：舊名稱不得改名／換部位、對照表完整）
 - 視覺驗證：`python -m http.server 8123` + headless Chrome 截圖 `dev-seed.html`（注入測試資料後轉首頁）
 - 部署前檢查 sw.js 快取版本號已升級
 - 同步合併規則：`node tools/sync-test.js`
